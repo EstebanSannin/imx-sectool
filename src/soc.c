@@ -136,10 +136,115 @@ static const struct soc_desc imx8mp = {
 	.mac_bank = 9,
 	.srk_bank = 6,
 	.srk_words = 8,
+	.srk_lock = "CST_SRK_LOCK",
 	.secure_jtag = 0, /* defeatured, NXP erratum ERR052318 */
 };
 
-static const struct soc_desc *const socs[] = { &imx8mp };
+/* ---- i.MX8M Mini ---------------------------------------------------------- */
+
+/* Positions from the IMX8MM fusemap of usbarmory/crucible, the
+ * meta-toradex-security imx8mm template (KTE, JTAG_HEO) and U-Boot
+ * (SPEED_GRADING, TEMP_GRADE).
+ */
+static const struct fuse_field imx8mm_fields[] = {
+	/* OCOTP_LOCK, bank 0 word 0 */
+	{ "TESTER_LOCK", 0, 0, 0, 2 },
+	{ "BOOT_CFG_LOCK", 0, 0, 2, 2 },
+	{ "SRK_LOCK", 0, 0, 9, 1 },
+	{ "SJC_RESP_LOCK", 0, 0, 10, 1 },
+	{ "USB_ID_LOCK", 0, 0, 12, 2 },
+	{ "MAC_ADDR_LOCK", 0, 0, 14, 2 },
+	{ "MANUFACTURE_KEY_LOCK", 0, 0, 16, 1 },
+	{ "GP1_LOCK", 0, 0, 20, 2 },
+	{ "GP2_LOCK", 0, 0, 22, 2 },
+	{ "GP5_LOCK", 0, 0, 24, 2 },
+	/* OCOTP_TESTER3, bank 1 word 0 */
+	{ "TEMP_GRADE", 1, 0, 6, 2 },
+	{ "SPEED_GRADING", 1, 0, 8, 3 },
+	/* OCOTP_TESTER4, bank 1 word 1 */
+	{ "NUM_A53_CORES", 1, 1, 0, 2 },
+	{ "M4_DISABLE", 1, 1, 8, 1 },
+	{ "USB_OTG1_DISABLE", 1, 1, 11, 1 },
+	{ "USB_OTG2_DISABLE", 1, 1, 12, 1 },
+	{ "EXPORT_CONTROL", 1, 1, 16, 1 },
+	{ "SEC_CONFIG[0]", 1, 1, 17, 1 },
+	{ "VPU_G1_DISABLE", 1, 1, 18, 1 },
+	{ "VPU_G2_DISABLE", 1, 1, 19, 1 },
+	{ "VPU_H1_DISABLE", 1, 1, 20, 1 },
+	{ "GPU2D_DISABLE", 1, 1, 21, 1 },
+	{ "PCIE1_DISABLE", 1, 1, 22, 1 },
+	{ "GPU3D_DISABLE", 1, 1, 24, 1 },
+	{ "MIPI_DSI_DISABLE", 1, 1, 28, 1 },
+	{ "ENET_DISABLE", 1, 1, 29, 1 },
+	{ "MIPI_CSI_DISABLE", 1, 1, 30, 1 },
+	/* OCOTP_BOOT_CFG0, bank 1 word 3 */
+	{ "BOOT_CFG", 1, 3, 0, 16 },
+	{ "KTE", 1, 3, 20, 1 },
+	{ "SJC_DISABLE", 1, 3, 21, 1 },
+	{ "JTAG_SMODE", 1, 3, 22, 2 }, /* 00 enabled, 01 secure, 11 no debug */
+	{ "SEC_CONFIG[1]", 1, 3, 25, 1 }, /* closes the device */
+	{ "JTAG_HEO", 1, 3, 26, 1 },
+	{ "BT_FUSE_SEL", 1, 3, 28, 1 },
+	{ "FORCE_COLD_BOOT", 1, 3, 29, 1 },
+	/* OCOTP_BOOT_CFG1, bank 2 word 0 */
+	{ "WDOG_ENABLE", 2, 0, 10, 1 },
+	{ "TZASC_ENABLE", 2, 0, 11, 1 },
+	{ "FORCE_INTERNAL_BOOT", 2, 0, 20, 1 },
+	{ "SDP_DISABLE", 2, 0, 21, 1 },
+	{ "SDP_READ_DISABLE", 2, 0, 22, 1 },
+	/* bank 8 */
+	{ "USB_VID", 8, 2, 0, 16 },
+	{ "USB_PID", 8, 2, 16, 16 },
+	{ "FIELD_RETURN", 8, 3, 0, 1 },
+	/* bank 9 */
+	{ "SRK_REVOKE", 9, 3, 0, 3 },
+};
+
+static const struct fuse_reg imx8mm_regs[] = {
+	{ "OCOTP_LOCK", 0, 0 },	     { "OCOTP_TESTER0", 0, 1 },
+	{ "OCOTP_TESTER1", 0, 2 },   { "OCOTP_TESTER3", 1, 0 },
+	{ "OCOTP_TESTER4", 1, 1 },   { "OCOTP_TESTER5", 1, 2 },
+	{ "OCOTP_BOOT_CFG0", 1, 3 }, { "OCOTP_BOOT_CFG1", 2, 0 },
+	{ "OCOTP_BOOT_CFG2", 2, 1 }, { "OCOTP_BOOT_CFG3", 2, 2 },
+	{ "OCOTP_BOOT_CFG4", 2, 3 }, { "OCOTP_TMU", 3, 3 },
+	{ "OCOTP_SRK0", 6, 0 },	     { "OCOTP_SRK1", 6, 1 },
+	{ "OCOTP_SRK2", 6, 2 },	     { "OCOTP_SRK3", 6, 3 },
+	{ "OCOTP_SRK4", 7, 0 },	     { "OCOTP_SRK5", 7, 1 },
+	{ "OCOTP_SRK6", 7, 2 },	     { "OCOTP_SRK7", 7, 3 },
+	{ "OCOTP_SJC_RESP0", 8, 0 }, { "OCOTP_SJC_RESP1", 8, 1 },
+	{ "OCOTP_USB_ID", 8, 2 },    { "OCOTP_FIELD_RETURN", 8, 3 },
+	{ "OCOTP_MAC_ADDR0", 9, 0 }, { "OCOTP_MAC_ADDR1", 9, 1 },
+	{ "OCOTP_MAC_ADDR2", 9, 2 }, { "OCOTP_SRK_REVOKE", 9, 3 },
+	{ "OCOTP_GP10", 14, 0 },     { "OCOTP_GP11", 14, 1 },
+	{ "OCOTP_GP20", 14, 2 },     { "OCOTP_GP21", 14, 3 },
+};
+
+/* No /dev/mem regions yet: the ROM, OCRAM and HAB addresses must first be
+ * checked on hardware. TF-A sits at 0x920000 here, lower than on the 8MP.
+ */
+static const struct soc_desc imx8mm = {
+	.name = "i.MX8M Mini",
+	.soc_id = "i.MX8MM",
+	.banks = 64,
+	.words_per_bank = 4,
+	.nvmem_prefix = "imx-ocotp",
+	.sec_bank = 1,
+	.sec_word = 3,
+	.sec_mask = 0x02000000,
+	.src_base = 0x30390000,
+	.snvs_base = 0x30370000,
+	.fields = imx8mm_fields,
+	.n_fields = ARRAY_SIZE(imx8mm_fields),
+	.regs = imx8mm_regs,
+	.n_regs = ARRAY_SIZE(imx8mm_regs),
+	.mac_bank = 9,
+	.srk_bank = 6,
+	.srk_words = 8,
+	.srk_lock = "SRK_LOCK",
+	.secure_jtag = 1,
+};
+
+static const struct soc_desc *const socs[] = { &imx8mp, &imx8mm };
 
 const struct soc_desc *soc;
 
@@ -238,7 +343,7 @@ int soc_detect(const char *force_id)
 		}
 	}
 	fprintf(stderr,
-		"error: SoC '%s' is not supported yet (supported: i.MX8MP)\n",
+		"error: SoC '%s' is not supported yet (supported: i.MX8MP, i.MX8MM)\n",
 		id);
 	return EX_UNAVAIL;
 }

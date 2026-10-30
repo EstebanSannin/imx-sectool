@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# mkfixtures.py -- build synthetic i.MX8M Plus fixtures for the host tests.
+# mkfixtures.py -- build synthetic i.MX8M fixtures for the host tests.
 #
 # usage: mkfixtures.py <outdir>
 #
@@ -10,6 +10,8 @@
 #   closed/      closed device, trusted state, no HAB events
 #   fallback/    ROM log with a fallback to the secondary image
 #   clobbered/   HAB persistent area overwritten
+#   mm-open/     i.MX8M Mini, open, fuses as on a real Verdin iMX8MM
+#   mm-auth/     i.MX8M Mini, closed, Secure JTAG (authenticated)
 #
 # License: MIT.  Author: Stefano Viola <stefano.viola@toradex.com>
 import os, struct, sys
@@ -52,6 +54,28 @@ def nvmem(closed, debug=None):
         fuses[7] |= 0x00C00000
         fuses[0] &= ~0x00000008                                      # BOOT_CFG_LOCK not OP
     return words_to_bytes(fuses)
+
+
+def nvmem_8mm(auth):
+    fuses = [0] * (64 * WORDS_PER_BANK)
+    # locks, bank 1 and bank 2 as read on an open Verdin iMX8M Mini
+    fuses[0:3] = [0x02a1a00b, 0x11111111, 0x22222222]               # fake UID
+    fuses[4:8] = [0x60000280, 0x00020000, 0x00000000, 0x180022d6]
+    fuses[8:12] = [0x01000010, 0x00000000, 0x00000001, 0x00000000]
+    fuses[36:39] = [0x02030405, 0x0a0b0001, 0x00000000]             # fake MAC
+    if auth:
+        fuses[0] |= 0x00000600                                       # SRK_LOCK, SJC_RESP_LOCK
+        fuses[7] |= 0x02000000                                       # SEC_CONFIG
+        fuses[24:32] = [0xa5a5a5a5] * 8                              # SRK hash
+        fuses[7] |= 0x00400000 | 0x00100000 | 0x04000000             # JTAG_SMODE=01, KTE, HEO
+        fuses[32:34] = [0xbadabada, 0xbadabada]                      # SJC_RESP, read-locked
+    return words_to_bytes(fuses)
+
+
+def scenario_8mm(outdir, name, auth):
+    d = os.path.join(outdir, name)
+    os.makedirs(d, exist_ok=True)
+    open(os.path.join(d, "nvmem.bin"), "wb").write(nvmem_8mm(auth))
 
 
 # HAB persistent area as read with 'md.l 0x90d040' in U-Boot
@@ -125,6 +149,8 @@ def main():
     scenario(out, "jtagdis", closed=True, events=False, debug="jtag-disabled")
     scenario(out, "authjtag", closed=True, events=False, debug="authenticated")
     scenario(out, "weakdebug", closed=True, events=False, debug="no-debug-nokte")
+    scenario_8mm(out, "mm-open", auth=False)
+    scenario_8mm(out, "mm-auth", auth=True)
 
     # imx-config.fuse as meta-toradex-security writes it (template + values)
     srk = "".join("H:F:%d:%d:0xA5A5A5A5\n" % (6 + i // 4, i % 4) for i in range(8))

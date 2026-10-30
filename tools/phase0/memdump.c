@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /*
- * memdump -- read-only dump of whitelisted i.MX8M Plus physical regions,
+ * memdump -- read-only dump of whitelisted i.MX8M physical regions,
  * used for imx-sectool Phase 0 discovery (see DESIGN.md, section 10).
  *
  * Only the regions in the table below can be read: the tool never takes a
@@ -13,6 +13,7 @@
  *                                   ROM log pointer (0x9e0)
  *   ocram-low  0x00900000  0x40000  OCRAM below TF-A (NXP BL31 at 0x950000);
  *                                   ROM log buffer and ROM/HAB persistent data
+ *                          0x20000  on i.MX8MM (BL31 at 0x920000)
  *   src        0x30390000  0x100    SRC: SBMR1, SRSR, SBMR2, GPR1..GPR10
  *   snvs-hp    0x30370000  0x100    SNVS HP: HPSR (SSM state) and friends
  *
@@ -50,8 +51,8 @@ struct region {
 	const char *desc;
 };
 
-/* i.MX8M Plus only; addresses from U-Boot/TF-A, see DESIGN.md section 8 */
-static const struct region regions[] = {
+/* addresses from U-Boot/TF-A, see DESIGN.md section 8 */
+static const struct region imx8mp_regions[] = {
 	{ "rom-low", 0x00000000, 0x1000,
 	  "Boot ROM low page (RVT, ROM API, ROM log ptr)" },
 	{ "ocram-low", 0x00900000, 0x40000, "OCRAM below TF-A" },
@@ -59,8 +60,18 @@ static const struct region regions[] = {
 	{ "snvs-hp", 0x30370000, 0x100, "SNVS high-power domain" },
 };
 
+static const struct region imx8mm_regions[] = {
+	{ "rom-low", 0x00000000, 0x1000,
+	  "Boot ROM low page (RVT, ROM API, ROM log ptr)" },
+	{ "ocram-low", 0x00900000, 0x20000, "OCRAM below TF-A" },
+	{ "src", 0x30390000, 0x100, "System Reset Controller" },
+	{ "snvs-hp", 0x30370000, 0x100, "SNVS high-power domain" },
+};
+
+static const struct region *regions;
+static size_t n_regions;
+
 #define SOC_ID_PATH "/sys/devices/soc0/soc_id"
-#define SOC_ID_WANT "i.MX8MP"
 
 static void usage(FILE *f)
 {
@@ -75,13 +86,13 @@ static const struct region *find_region(const char *name)
 {
 	size_t i;
 
-	for (i = 0; i < ARRAY_SIZE(regions); i++)
+	for (i = 0; i < n_regions; i++)
 		if (!strcmp(regions[i].name, name))
 			return &regions[i];
 	return NULL;
 }
 
-/* refuse to run anywhere but an i.MX8M Plus: the table is SoC specific */
+/* pick the region table for this SoC, refuse any other SoC */
 static int check_soc(void)
 {
 	char buf[64] = { 0 };
@@ -97,9 +108,14 @@ static int check_soc(void)
 		buf[0] = '\0';
 	fclose(f);
 	buf[strcspn(buf, "\n")] = '\0';
-	if (strcmp(buf, SOC_ID_WANT)) {
-		fprintf(stderr, "error: SoC is '%s', this helper only knows %s\n",
-			buf, SOC_ID_WANT);
+	if (!strcmp(buf, "i.MX8MP")) {
+		regions = imx8mp_regions;
+		n_regions = ARRAY_SIZE(imx8mp_regions);
+	} else if (!strcmp(buf, "i.MX8MM")) {
+		regions = imx8mm_regions;
+		n_regions = ARRAY_SIZE(imx8mm_regions);
+	} else {
+		fprintf(stderr, "error: SoC '%s' is not supported\n", buf);
 		return EX_STATE;
 	}
 	return EX_OK;
@@ -149,7 +165,7 @@ static int cmd_list(void)
 {
 	size_t i;
 
-	for (i = 0; i < ARRAY_SIZE(regions); i++)
+	for (i = 0; i < n_regions; i++)
 		printf("%-10s 0x%08x 0x%06x  %s\n", regions[i].name,
 		       regions[i].base, regions[i].size, regions[i].desc);
 	return EX_OK;
@@ -247,6 +263,9 @@ int main(int argc, char **argv)
 		usage(stdout);
 		return EX_OK;
 	}
+	rc = check_soc();
+	if (rc != EX_OK)
+		return rc;
 	if (!strcmp(cmd, "list"))
 		return cmd_list();
 
@@ -261,10 +280,6 @@ int main(int argc, char **argv)
 			argv[2]);
 		return EX_USAGE;
 	}
-
-	rc = check_soc();
-	if (rc != EX_OK)
-		return rc;
 
 	if (!strcmp(cmd, "dump")) {
 		if (argc != 4) {

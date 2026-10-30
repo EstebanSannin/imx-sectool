@@ -298,13 +298,14 @@ int cmd_bootinfo(int argc, char **argv)
 	src_why = have_src ? NULL : mmio_error();
 	have_log = romlog_summary(&ri, &why) == 0;
 	have_sel = field_read("BT_FUSE_SEL", &sel) == 0;
-	have_off = field_read("IMG_CNTN_SET1_OFFSET", &off) == 0;
 	have_sec = field_read("SEC_CONFIG[1]", &sec) == 0;
+	/* only i.MX8MN/MP have this fuse */
+	of = field_find("IMG_CNTN_SET1_OFFSET");
+	have_off = !of || field_read(of->name, &off) == 0;
 
 	if (!have_src || !have_log || !have_sel || !have_off || !have_sec)
 		rc = EX_UNAVAIL;
 
-	of = field_find("IMG_CNTN_SET1_OFFSET");
 	offs = have_off && of ? field_meaning(of, off, ob, sizeof(ob)) : NULL;
 	a_sts = ri.auth & 0xff;
 	a_rsn = (ri.auth >> 8) & 0xff;

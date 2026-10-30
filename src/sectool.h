@@ -76,6 +76,7 @@ struct soc_desc {
 	const struct fuse_field *fields; /* security-relevant fuses */
 	size_t n_fields;
 	unsigned int srk_bank, srk_words; /* SRK hash: srk_words from srk_bank */
+	const char *srk_lock; /* name of the SRK hash lock field */
 	const struct fuse_reg *regs;
 	size_t n_regs;
 	unsigned int mac_bank; /* MAC fuses: words 0-2 of this bank */

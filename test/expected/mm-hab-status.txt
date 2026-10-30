@@ -1,0 +1,4 @@
+
+Secure boot enabled
+
+HAB Configuration: 0xcc, HAB State: unavailable

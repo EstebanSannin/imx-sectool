@@ -2,7 +2,7 @@
 #
 # phase0.sh -- read-only discovery for imx-sectool (DESIGN.md, section 10).
 #
-# Collects what Linux exposes about fuses, boot and security on an i.MX8M Plus
+# Collects what Linux exposes about fuses, boot and security on an i.MX8M
 # into one output directory. Nothing is written to the hardware: fuses are read
 # through nvmem, and physical memory is only read through the whitelisted
 # 'memdump' helper.
@@ -53,7 +53,10 @@ for a in machine family soc_id revision serial_number; do
     [ -r /sys/devices/soc0/$a ] && say "soc0/$a: $(cat /sys/devices/soc0/$a)"
 done
 SOC=$(cat /sys/devices/soc0/soc_id 2>/dev/null)
-[ "$SOC" = "i.MX8MP" ] || say "warning: soc_id is '$SOC', the helper tables target i.MX8MP"
+case "$SOC" in
+i.MX8MP|i.MX8MM) ;;
+*) say "warning: soc_id is '$SOC', memdump only knows i.MX8MP and i.MX8MM" ;;
+esac
 
 # ---- kernel config ----------------------------------------------------------
 section "kernel config"

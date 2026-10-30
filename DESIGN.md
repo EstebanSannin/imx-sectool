@@ -458,6 +458,24 @@ All values were checked on hardware against U-Boot on the same boot (see
 `SRC_SRSR` reads `0x1` after every kind of reset on this board, so
 `reset-cause` prints a warning.
 
+### i.MX8M Mini
+
+Differences from the i.MX8M Plus:
+
+| Item | Value | Source |
+|---|---|---|
+| Fuse layout | 64 banks of 4 words | Linux `imx-ocotp.c` |
+| SRK hash lock | `SRK_LOCK`, bank 0 word 0 bit 9 | crucible IMX8MM fusemap |
+| `SRK_REVOKE` | 3 bits, bank 9 word 3 | same |
+| Secure debug | Secure JTAG (`JTAG_SMODE=01`) is supported | meta-toradex-security |
+| `TEMP_GRADE` | bank 1 word 0 bits 7:6 | U-Boot `get_cpu_temp_grade()` |
+| `SPEED_GRADING` | bank 1 word 0 bits 10:8: 800, 1200, 1600, 1800, 2000 MHz | U-Boot |
+| TF-A | BL31 at `0x920000` | TF-A `platform_def.h` |
+
+The fuse commands were checked on an open Verdin iMX8M Mini. No `/dev/mem`
+region is enabled yet, so `hab_status`, `romlog`, `bootinfo` and two audit
+checks report "unavailable".
+
 ## 9. meta-toradex-security
 
 | In the layer | In imx-sectool |
@@ -486,7 +504,10 @@ A recipe `imx-sectool_git.bb` could live in the layer.
 
 ## 11. Future work
 
-- i.MX8M Mini, then i.MX9 (ELE), then i.MX6/7, then SCU parts (i.MX8/8X).
+- i.MX8M Mini: check the Boot ROM regions and the HAB event area on
+  hardware.
+- i.MX8M Nano and Quad, then i.MX9 (ELE), then i.MX6/7, then SCU parts
+  (i.MX8/8X).
 - Optional kernel helper for the TF-A HAB call on i.MX8M and the SCU
   security calls, proposed upstream as a sysfs interface.
 - U-Boot could copy the HAB events and ROM log into the device tree

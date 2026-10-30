@@ -654,21 +654,22 @@ int cmd_audit(int argc, char **argv)
 		    "bank %u, %u words", soc->srk_bank, soc->srk_words);
 	else
 		add(ST_FAIL, "srk-hash", "SRK hash programmed", "all zero");
-	if (need("CST_SRK_LOCK", &v) == 0) {
+	if (need(soc->srk_lock, &v) == 0) {
 		if (v)
-			add(ST_PASS, "srk-lock", "SRK hash locked",
-			    "CST_SRK_LOCK=1");
+			add(ST_PASS, "srk-lock", "SRK hash locked", "%s=1",
+			    soc->srk_lock);
 		else
 			add(srk == 1 ? ST_FAIL : ST_WARN, "srk-lock",
 			    "SRK hash locked",
-			    "CST_SRK_LOCK=0: the SRK hash words can still be burned");
+			    "%s=0: the SRK hash words can still be burned",
+			    soc->srk_lock);
 	}
 
 	/* 5. SRK revocation (informational) */
 	if (need("SRK_REVOKE", &v) == 0) {
-		if (v == 0xf)
+		if (v == FIELD_MASK(field_find("SRK_REVOKE")->width))
 			add(ST_FAIL, "srk-revoke", "SRK keys usable",
-			    "all four SRK keys revoked");
+			    "all revocable SRK keys revoked");
 		else if (v)
 			add(ST_WARN, "srk-revoke", "SRK keys usable",
 			    "revoked mask 0x%x", v);

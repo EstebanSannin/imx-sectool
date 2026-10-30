@@ -24,13 +24,14 @@ ln -sf "$BIN" "$OUT/bin/hab_status"
 
 pass=0
 fail=0
+SOC=i.MX8MP
 
 # case <name> <scenario> <expected-exit> <command...>
 case_() {
     name=$1 scen=$2 want=$3
     shift 3
     got_out=$OUT/$name.out
-    IMX_SECTOOL_SOC=i.MX8MP IMX_SECTOOL_NVMEM=$FIX/$scen/nvmem.bin \
+    IMX_SECTOOL_SOC=$SOC IMX_SECTOOL_NVMEM=$FIX/$scen/nvmem.bin \
         IMX_SECTOOL_MEM_DUMP=$FIX/$scen PATH="$OUT/bin:$PATH" \
         "$@" > "$got_out" 2> "$OUT/$name.err" < /dev/null
     rc=$?
@@ -127,6 +128,18 @@ case_ bootinfo-fallback      fallback  0 "$BIN" bootinfo
 case_ bootinfo-json          open      0 "$BIN" --json bootinfo
 case_ bootinfo-nolog         nolog     3 "$BIN" bootinfo
 case_ romlog-nolog           nolog     4 "$BIN" romlog
+
+# i.MX8M Mini: fuses only, no /dev/mem regions yet
+SOC=i.MX8MM
+case_ mm-fuse-read           mm-open   0 fuse read 1 0 4
+case_ mm-fuse-read-invalid   mm-open   1 fuse read 64 0
+case_ mm-fusemap-all         mm-open   0 "$BIN" fusemap
+case_ mm-fusemap-srk         mm-auth   0 "$BIN" fusemap SRK_HASH
+case_ mm-debug-open          mm-open   1 "$BIN" debug-status
+case_ mm-debug-auth          mm-auth   0 "$BIN" debug-status --expect authenticated
+case_ mm-hab-status          mm-auth   3 hab_status
+case_ mm-bootinfo            mm-open   3 "$BIN" bootinfo
+case_ mm-audit               mm-auth   3 "$BIN" audit
 
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]

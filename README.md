@@ -52,14 +52,18 @@ make install PREFIX=/usr INSTALL_ALIASES=1      # also installs 'fuse' and 'hab_
 
 ## Supported SoCs
 
-Only the **i.MX8M Plus** is supported for now. On any other SoC the tool
-stops before reading anything.
+| SoC | Status |
+|---|---|
+| i.MX8M Plus | All commands, tested on hardware |
+| i.MX8M Mini | Fuse commands, `fusemap`, `debug-status` and `audit`, tested on an open board. `hab_status`, `romlog` and `bootinfo` report "unavailable" until the Boot ROM memory regions are checked on hardware |
+
+On any other SoC the tool stops before reading anything.
 
 Planned:
 
 | SoC | Secure boot | Notes |
 |---|---|---|
-| i.MX8M Mini, Nano, Quad | HABv4 | Same family as the i.MX8M Plus; next to come |
+| i.MX8M Nano, Quad | HABv4 | Same family as the i.MX8M Plus; next to come |
 | i.MX93, i.MX91, i.MX95 | AHAB (EdgeLock Enclave) | Adds `ahab_status` |
 | i.MX8ULP | AHAB (EdgeLock Enclave) | |
 | i.MX6, i.MX6UL/ULL, i.MX7 | HABv4 | HAB event area to be found on hardware |
@@ -69,7 +73,7 @@ See [DESIGN.md](DESIGN.md) for the details.
 
 ## Credits
 
-The i.MX8M Plus fuse positions come from the IMX8MP fusemap of
+The i.MX8M Plus and i.MX8M Mini fuse positions come from the fusemaps of
 [usbarmory/crucible](https://github.com/usbarmory/crucible) (BSD-3-Clause,
 Copyright (c) The crucible authors) and from the meta-toradex-security fuse
 templates.

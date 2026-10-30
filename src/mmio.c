@@ -37,6 +37,11 @@ static int find_region(uint32_t phys, size_t len)
 	const struct mem_region *r;
 	size_t i;
 
+	if (!soc->n_regions) {
+		snprintf(errbuf, sizeof(errbuf),
+			 "no memory regions verified on %s yet", soc->name);
+		return -1;
+	}
 	for (i = 0; i < soc->n_regions && i < MAX_REGIONS; i++) {
 		r = &soc->regions[i];
 		if (phys >= r->base && len <= r->size &&

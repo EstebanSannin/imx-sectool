@@ -261,6 +261,7 @@ int cmd_hab_status(int argc, char **argv)
 	if (mmio_read32(soc->snvs_base + SNVS_HPSR, &hpsr)) {
 		printf("\nHAB Configuration: 0x%02x, HAB State: unavailable\n",
 		       config);
+		fflush(stdout);
 		fprintf(stderr, "error: cannot read the SNVS state: %s\n",
 			mmio_error());
 		return EX_UNAVAIL;

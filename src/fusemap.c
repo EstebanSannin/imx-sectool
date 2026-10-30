@@ -42,6 +42,8 @@ const char *field_meaning(const struct fuse_field *f, uint32_t v, char *buf,
 					    "extended commercial (-20..105 C)",
 					    "industrial (-40..105 C)",
 					    "automotive (-40..125 C)" };
+	static const unsigned int speed_8mm[] = { 800,	1200, 1600, 1800,
+						  2000, 0,    0,    0 };
 	unsigned int mib;
 	char *p;
 	int k;
@@ -59,9 +61,12 @@ const char *field_meaning(const struct fuse_field *f, uint32_t v, char *buf,
 		return v ? "closed" : "open";
 	if (!strcmp(f->name, "TEMP_GRADE"))
 		return temp[v & 3];
-	/* U-Boot get_cpu_speed_grade_hz(), i.MX8MN/MP */
+	/* U-Boot get_cpu_speed_grade_hz() */
 	if (!strcmp(f->name, "SPEED_GRADING")) {
-		snprintf(buf, n, "%u MHz", 2300 - (v & 0xf) * 100);
+		if (!strcmp(soc->soc_id, "i.MX8MM"))
+			snprintf(buf, n, "%u MHz", speed_8mm[v & 7]);
+		else
+			snprintf(buf, n, "%u MHz", 2300 - (v & 0xf) * 100);
 		return buf;
 	}
 	/* U-Boot arch_spl_mmc_get_uboot_raw_sector() */
@@ -77,7 +82,7 @@ const char *field_meaning(const struct fuse_field *f, uint32_t v, char *buf,
 			return "no key revoked";
 		p = buf;
 		p += snprintf(p, n, "revoked:");
-		for (k = 0; k < 4; k++)
+		for (k = 0; k < f->width; k++)
 			if (v & (1u << k))
 				p += snprintf(p, n - (size_t)(p - buf),
 					      " SRK%d", k + 1);
@@ -209,7 +214,7 @@ static int show_srk(void)
 		fprintf(stderr, "error: SRK fuses unreadable\n");
 		return EX_UNAVAIL;
 	}
-	lrc = field_read("CST_SRK_LOCK", &lk);
+	lrc = field_read(soc->srk_lock, &lk);
 	if (opt_json) {
 		printf("{\"name\": \"SRK_HASH\", \"bank\": %u, \"words\": [",
 		       soc->srk_bank);
@@ -225,8 +230,8 @@ static int show_srk(void)
 	printf("SRK_HASH (bank %u, %u words):", soc->srk_bank, soc->srk_words);
 	for (i = 0; i < soc->srk_words; i++)
 		printf(" %08x", w[i]);
-	printf("\n  %s, CST_SRK_LOCK=%s\n",
-	       any || locked ? "programmed" : "not programmed",
+	printf("\n  %s, %s=%s\n",
+	       any || locked ? "programmed" : "not programmed", soc->srk_lock,
 	       lrc ? "?" :
 	       lk  ? "1 (locked)" :
 		     "0 (unlocked)");

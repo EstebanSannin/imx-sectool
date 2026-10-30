@@ -1,0 +1,14 @@
+imx-sectool audit - i.MX8M Mini
+  [PASS] Secure boot closed             SEC_CONFIG[1]=1
+  [ N/A] No HAB events                  no memory regions verified on i.MX8M Mini yet
+  [PASS] SRK hash programmed            bank 6, 8 words
+  [PASS] SRK hash locked                SRK_LOCK=1
+  [PASS] SRK keys usable                none revoked
+  [PASS] JTAG / debug policy            authenticated
+  [PASS] SJC response key               programmed, read-locked
+  [PASS] JTAG mode locked               BOOT_CFG_LOCK has override-protect
+  [WARN] Serial downloader disabled     SDP_DISABLE=0: USB recovery boot possible (signed images only once closed)
+  [PASS] Boot config from fuses         BT_FUSE_SEL=1
+  [PASS] Not in field-return            FIELD_RETURN=0
+  [ N/A] SNVS security state            no memory regions verified on i.MX8M Mini yet
+Result: unavailable (passed 9, warnings 1, failed 0, unavailable 2)
