@@ -1,0 +1,25 @@
+imx-sectool audit - i.MX8M Plus
+  [PASS] Secure boot closed             SEC_CONFIG[1]=1
+  [PASS] No HAB events                  none logged by the Boot ROM
+  [PASS] SRK hash programmed            bank 6, 8 words
+  [PASS] SRK hash locked                CST_SRK_LOCK=1
+  [PASS] SRK keys usable                none revoked
+  [PASS] JTAG / debug policy            no-debug
+  [PASS] JTAG mode locked               BOOT_CFG_LOCK has override-protect
+  [WARN] Serial downloader disabled     SDP_DISABLE=0: USB recovery boot possible (signed images only once closed)
+  [PASS] Boot config from fuses         BT_FUSE_SEL=1
+  [PASS] Not in field-return            FIELD_RETURN=0
+  [PASS] SNVS security state            trusted (SSM_STATE 0xd)
+  [PASS] H:SRK_HASH (6/0)               0xa5a5a5a5 as expected
+  [PASS] H:SRK_HASH (6/1)               0xa5a5a5a5 as expected
+  [PASS] H:SRK_HASH (6/2)               0xa5a5a5a5 as expected
+  [PASS] H:SRK_HASH (6/3)               0xa5a5a5a5 as expected
+  [PASS] H:SRK_HASH (7/0)               0xa5a5a5a5 as expected
+  [PASS] H:SRK_HASH (7/1)               0xa5a5a5a5 as expected
+  [PASS] H:SRK_HASH (7/2)               0xa5a5a5a5 as expected
+  [PASS] H:SRK_HASH (7/3)               0xa5a5a5a5 as expected
+  [PASS] H:CLOSE (1/3)                  0x9ad02000 as expected
+  [PASS] SJC:JTAG_SMODE_NODEBUG (1/3)   0x9ad02000 as expected
+  [PASS] SJC:KTE (1/3)                  0x9ad02000 as expected
+  [PASS] SJC:BOOT_CFG_LOCK_OP (0/0)     0xffafabeb as expected
+Result: warn (passed 22, warnings 1, failed 0, unavailable 0)

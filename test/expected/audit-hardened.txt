@@ -1,0 +1,13 @@
+imx-sectool audit - i.MX8M Plus
+  [PASS] Secure boot closed             SEC_CONFIG[1]=1
+  [PASS] No HAB events                  none logged by the Boot ROM
+  [PASS] SRK hash programmed            bank 6, 8 words
+  [PASS] SRK hash locked                CST_SRK_LOCK=1
+  [PASS] SRK keys usable                none revoked
+  [PASS] JTAG / debug policy            no-debug
+  [PASS] JTAG mode locked               BOOT_CFG_LOCK has override-protect
+  [WARN] Serial downloader disabled     SDP_DISABLE=0: USB recovery boot possible (signed images only once closed)
+  [PASS] Boot config from fuses         BT_FUSE_SEL=1
+  [PASS] Not in field-return            FIELD_RETURN=0
+  [PASS] SNVS security state            trusted (SSM_STATE 0xd)
+Result: warn (passed 10, warnings 1, failed 0, unavailable 0)

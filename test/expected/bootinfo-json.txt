@@ -1,0 +1,1 @@
+{"soc": "i.MX8MP", "sbmr1": "0x00002000", "sbmr2": "0x00040019", "bmod": 0, "boot_config_source": "fuses", "boot_image": "primary", "auth_result": "0x00cf1133", "entry": "0x00920000", "secondary_image": "secondary image at 4 MiB", "secure_boot": "open"}

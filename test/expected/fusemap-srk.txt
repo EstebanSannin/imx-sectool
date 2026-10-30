@@ -1,0 +1,2 @@
+SRK_HASH (bank 6, 8 words): a5a5a5a5 a5a5a5a5 a5a5a5a5 a5a5a5a5 a5a5a5a5 a5a5a5a5 a5a5a5a5 a5a5a5a5
+  programmed, CST_SRK_LOCK=1 (locked)

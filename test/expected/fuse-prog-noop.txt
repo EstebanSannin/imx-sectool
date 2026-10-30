@@ -1,0 +1,3 @@
+Programming bank 1 word 0x00000003 to 0x98002000...
+  current 0x98002000 | requested 0x98002000 -> result 0x98002000 (new bits 0x00000000)
+  nothing to program: all requested bits are already set

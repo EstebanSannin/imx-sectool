@@ -1,0 +1,4 @@
+
+Secure boot disabled
+
+HAB Configuration: 0xf0, HAB State: 0x66

@@ -1,0 +1,11 @@
+SoC:              i.MX8M Plus (SJC backend)
+Secure debug:     open                  secure debug not provisioned
+  JTAG_SMODE:     00 (JTAG enabled)     bank 1 word 3
+  SJC_DISABLE:    0                     bank 1 word 3
+  KTE:            0                     bank 1 word 3
+  BOOT_CFG_LOCK:  10 (override-protect) bank 0 word 0
+Secure boot:      open
+Checks:
+  [PASS] JTAG / debug policy            open, as expected
+  [PASS] Expected mode                  open
+Result:           ok

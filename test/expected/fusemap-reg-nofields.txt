@@ -1,0 +1,1 @@
+OCOTP_TESTER2 (bank 0 word 3): 0x22222222

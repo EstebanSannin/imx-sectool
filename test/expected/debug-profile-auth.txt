@@ -1,0 +1,19 @@
+SoC:              i.MX8M Plus (SJC backend)
+Secure debug:     authenticated         TDX_SECURE_DEBUG_MODE="authenticated"
+  JTAG_SMODE:     01 (Secure JTAG)      bank 1 word 3
+  SJC_DISABLE:    0                     bank 1 word 3
+  KTE:            1 (trace gated)       bank 1 word 3
+  BOOT_CFG_LOCK:  10 (override-protect) bank 0 word 0
+  SJC_RESP:       programmed, read-locked
+Secure boot:      closed
+Checks:
+  [FAIL] JTAG / debug policy            Secure JTAG is defeatured on i.MX8M Plus (ERR052318); this mode is not enforced
+  [PASS] SJC response key               programmed, read-locked
+  [WARN] HAB JTAG reopen blocked        JTAG_HEO=0: trusted boot code can reopen JTAG
+  [PASS] JTAG mode locked               BOOT_CFG_LOCK has override-protect
+  [PASS] SJC:SJC_RESP_LO (8/0)          programmed, read-locked (value not compared)
+  [PASS] SJC:SJC_RESP_HI (8/1)          programmed, read-locked (value not compared)
+  [FAIL] SJC:SJC_RESP_LOCK (0/0)        is 0xffafabeb, expected bits 0x00000400
+  [PASS] SJC:JTAG_SMODE_SECURE (1/3)    0x9a502000 as expected
+  [FAIL] SJC:JTAG_HEO (1/3)             is 0x9a502000, expected bits 0x04000000
+Result:           fail

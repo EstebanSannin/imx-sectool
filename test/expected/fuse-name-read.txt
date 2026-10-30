@@ -1,0 +1,1 @@
+JTAG_SMODE = 0x0 (JTAG enabled)  (bank 1 word 3 bits 23:22, word 0x98002000)

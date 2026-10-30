@@ -1,0 +1,8 @@
+Programming KTE (bank 1 word 3 bits 20) to 0x1...
+  current 0x98002000 | requested 0x00100000 -> result 0x98102000 (new bits 0x00100000)
+Warning: Programming fuses is an irreversible operation!
+         This may brick your system.
+         Use this command only if you are sure of what you are doing!
+
+Really perform this fuse programming? <y/N>
+Fuse programming aborted

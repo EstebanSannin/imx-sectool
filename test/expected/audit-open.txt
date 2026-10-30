@@ -1,0 +1,12 @@
+imx-sectool audit - i.MX8M Plus
+  [FAIL] Secure boot closed             SEC_CONFIG[1]=0: unsigned images boot
+  [FAIL] No HAB events                  4 event(s): run 'hab_status'
+  [FAIL] SRK hash programmed            all zero
+  [WARN] SRK hash locked                CST_SRK_LOCK=0: the SRK hash words can still be burned
+  [PASS] SRK keys usable                none revoked
+  [FAIL] JTAG / debug policy            JTAG fully open (JTAG_SMODE=00, SJC_DISABLE=0)
+  [WARN] Serial downloader disabled     SDP_DISABLE=0: USB recovery boot possible (signed images only once closed)
+  [PASS] Boot config from fuses         BT_FUSE_SEL=1
+  [PASS] Not in field-return            FIELD_RETURN=0
+  [WARN] SNVS security state            non-secure (SSM_STATE 0xb)
+Result: fail (passed 3, warnings 3, failed 4, unavailable 0)

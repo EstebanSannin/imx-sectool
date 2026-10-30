@@ -1,0 +1,24 @@
+imx-sectool audit - i.MX8M Plus
+  [FAIL] Secure boot closed             SEC_CONFIG[1]=0: unsigned images boot
+  [FAIL] No HAB events                  4 event(s): run 'hab_status'
+  [FAIL] SRK hash programmed            all zero
+  [WARN] SRK hash locked                CST_SRK_LOCK=0: the SRK hash words can still be burned
+  [PASS] SRK keys usable                none revoked
+  [FAIL] JTAG / debug policy            JTAG fully open (JTAG_SMODE=00, SJC_DISABLE=0)
+  [WARN] Serial downloader disabled     SDP_DISABLE=0: USB recovery boot possible (signed images only once closed)
+  [PASS] Boot config from fuses         BT_FUSE_SEL=1
+  [PASS] Not in field-return            FIELD_RETURN=0
+  [WARN] SNVS security state            non-secure (SSM_STATE 0xb)
+  [FAIL] H:SRK_HASH (6/0)               is 0x00000000, expected 0xa5a5a5a5
+  [FAIL] H:SRK_HASH (6/1)               is 0x00000000, expected 0xa5a5a5a5
+  [FAIL] H:SRK_HASH (6/2)               is 0x00000000, expected 0xa5a5a5a5
+  [FAIL] H:SRK_HASH (6/3)               is 0x00000000, expected 0xa5a5a5a5
+  [FAIL] H:SRK_HASH (7/0)               is 0x00000000, expected 0xa5a5a5a5
+  [FAIL] H:SRK_HASH (7/1)               is 0x00000000, expected 0xa5a5a5a5
+  [FAIL] H:SRK_HASH (7/2)               is 0x00000000, expected 0xa5a5a5a5
+  [FAIL] H:SRK_HASH (7/3)               is 0x00000000, expected 0xa5a5a5a5
+  [FAIL] H:CLOSE (1/3)                  is 0x98002000, expected bits 0x02000000
+  [FAIL] SJC:JTAG_SMODE_NODEBUG (1/3)   is 0x98002000, expected bits 0x00c00000
+  [FAIL] SJC:KTE (1/3)                  is 0x98002000, expected bits 0x00100000
+  [PASS] SJC:BOOT_CFG_LOCK_OP (0/0)     0xffafa9eb as expected
+Result: fail (passed 4, warnings 3, failed 15, unavailable 0)

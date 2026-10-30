@@ -1,0 +1,7 @@
+Boot information - i.MX8M Plus
+  SRC_SBMR1:              0x00002000  (boot config)
+  SRC_SBMR2:              0x00040019  (BMOD 00)
+  Boot config source:     fuses (BT_FUSE_SEL=1)
+  ROM log:                unavailable (ROM log pointer is not valid)
+  Secondary image:        secondary image at 4 MiB (IMG_CNTN_SET1_OFFSET=0)
+  Secure boot:            open (SEC_CONFIG[1]=0)

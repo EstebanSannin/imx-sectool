@@ -1,0 +1,5 @@
+Comparing bank 1:
+
+Word 0x00000003:
+Value 0x98000000:0x98002000
+failed

@@ -1,0 +1,18 @@
+{"address": "0x009112f8", "events": [
+  {"raw": "0xe0000000", "id": "0xe0", "name": null, "params": []},
+  {"raw": "0x22000000", "id": "0x22", "name": null, "params": []},
+  {"raw": "0x31000000", "id": "0x31", "name": null, "params": []},
+  {"raw": "0x41000000", "id": "0x41", "name": null, "params": []},
+  {"raw": "0x61000000", "id": "0x61", "name": null, "params": []},
+  {"raw": "0x82000000", "id": "0x82", "name": "device driver pre-config", "params": ["0x00000ee9"]},
+  {"raw": "0x83000000", "id": "0x83", "name": null, "params": []},
+  {"raw": "0x80000000", "id": "0x80", "name": "device init start", "params": ["0x00000ef3"]},
+  {"raw": "0x81000000", "id": "0x81", "name": "device init done", "params": ["0x0000d149"]},
+  {"raw": "0x50000000", "id": "0x50", "name": "boot from primary image", "params": []},
+  {"raw": "0x90000000", "id": "0x90", "name": "read start", "params": ["0x00000000"]},
+  {"raw": "0x91000000", "id": "0x91", "name": "read done", "params": ["0x0000d154"]},
+  {"raw": "0x90000000", "id": "0x90", "name": "read start", "params": ["0x00000008"]},
+  {"raw": "0x91000000", "id": "0x91", "name": "read done", "params": ["0x0000d9a1"]},
+  {"raw": "0xa0000000", "id": "0xa0", "name": "image authentication result", "params": ["0x00cf1133", "0x0000dab2"]},
+  {"raw": "0xc0000000", "id": "0xc0", "name": "jump to boot image", "params": ["0x00920000", "0x0000edc2"]}
+], "complete": true, "boot_image": "primary"}

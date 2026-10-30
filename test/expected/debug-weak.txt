@@ -1,0 +1,12 @@
+SoC:              i.MX8M Plus (SJC backend)
+Secure debug:     no-debug              TDX_SECURE_DEBUG_MODE="no-debug"
+  JTAG_SMODE:     11 (No debug)         bank 1 word 3
+  SJC_DISABLE:    0                     bank 1 word 3
+  KTE:            0                     bank 1 word 3
+  BOOT_CFG_LOCK:  00 (unlocked)         bank 0 word 0
+Secure boot:      closed
+Checks:
+  [PASS] JTAG / debug policy            no-debug
+  [WARN] Trace gated (KTE)              KTE=0: bus trace is not gated by the debug policy
+  [WARN] JTAG mode locked               BOOT_CFG_LOCK=0: JTAG mode not override-protected
+Result:           warn

@@ -1,0 +1,4 @@
+{"soc": "i.MX8MP", "backend": "sjc", "mode": "no-debug", "layer": "TDX_SECURE_DEBUG_MODE=\"no-debug\"", "fuses": {"JTAG_SMODE": 3, "SJC_DISABLE": 0, "KTE": 1, "JTAG_HEO": 0, "BOOT_CFG_LOCK": 2}, "secure_boot": "closed", "checks": [
+  {"id": "debug-policy", "status": "pass", "title": "JTAG / debug policy", "detail": "no-debug"},
+  {"id": "debug-lock", "status": "pass", "title": "JTAG mode locked", "detail": "BOOT_CFG_LOCK has override-protect"}
+], "result": "ok"}

@@ -1,0 +1,13 @@
+# build output
+/imx-sectool
+*.o
+tools/phase0/memdump
+
+# Phase 0 discovery output: contains device identifiers, never commit
+phase0-out-*/
+
+# host test output
+test/out/
+
+# release binaries
+/dist/

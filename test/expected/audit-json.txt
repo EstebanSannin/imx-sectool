@@ -1,0 +1,13 @@
+{"soc": "i.MX8MP", "checks": [
+  {"id": "secure-boot", "status": "pass", "title": "Secure boot closed", "detail": "SEC_CONFIG[1]=1"},
+  {"id": "hab-events", "status": "pass", "title": "No HAB events", "detail": "none logged by the Boot ROM"},
+  {"id": "srk-hash", "status": "pass", "title": "SRK hash programmed", "detail": "bank 6, 8 words"},
+  {"id": "srk-lock", "status": "pass", "title": "SRK hash locked", "detail": "CST_SRK_LOCK=1"},
+  {"id": "srk-revoke", "status": "pass", "title": "SRK keys usable", "detail": "none revoked"},
+  {"id": "debug-policy", "status": "pass", "title": "JTAG / debug policy", "detail": "no-debug"},
+  {"id": "debug-lock", "status": "pass", "title": "JTAG mode locked", "detail": "BOOT_CFG_LOCK has override-protect"},
+  {"id": "sdp", "status": "warn", "title": "Serial downloader disabled", "detail": "SDP_DISABLE=0: USB recovery boot possible (signed images only once closed)"},
+  {"id": "bt-fuse-sel", "status": "pass", "title": "Boot config from fuses", "detail": "BT_FUSE_SEL=1"},
+  {"id": "field-return", "status": "pass", "title": "Not in field-return", "detail": "FIELD_RETURN=0"},
+  {"id": "ssm", "status": "pass", "title": "SNVS security state", "detail": "trusted (SSM_STATE 0xd)"}
+], "result": "warn"}

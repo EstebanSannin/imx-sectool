@@ -1,0 +1,14 @@
+SoC:              i.MX8M Plus (SJC backend)
+Secure debug:     no-debug              TDX_SECURE_DEBUG_MODE="no-debug"
+  JTAG_SMODE:     11 (No debug)         bank 1 word 3
+  SJC_DISABLE:    0                     bank 1 word 3
+  KTE:            1 (trace gated)       bank 1 word 3
+  BOOT_CFG_LOCK:  10 (override-protect) bank 0 word 0
+Secure boot:      closed
+Checks:
+  [PASS] JTAG / debug policy            no-debug
+  [PASS] JTAG mode locked               BOOT_CFG_LOCK has override-protect
+  [PASS] SJC:JTAG_SMODE_NODEBUG (1/3)   0x9ad02000 as expected
+  [PASS] SJC:KTE (1/3)                  0x9ad02000 as expected
+  [PASS] SJC:BOOT_CFG_LOCK_OP (0/0)     0xffafabeb as expected
+Result:           ok

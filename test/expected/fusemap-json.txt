@@ -1,0 +1,10 @@
+{"name": "OCOTP_LOCK", "bank": 0, "word": 0, "value": "0xffafabeb", "fields": [
+  {"name": "TESTER_LOCK", "bank": 0, "word": 0, "bits": "1:0", "value": 3, "meaning": "write+override-protect"},
+  {"name": "BOOT_CFG_LOCK", "bank": 0, "word": 0, "bits": "3:2", "value": 2, "meaning": "override-protect"},
+  {"name": "CST_SRK_LOCK", "bank": 0, "word": 0, "bits": "9", "value": 1, "meaning": "locked"},
+  {"name": "SJC_RESP_LOCK", "bank": 0, "word": 0, "bits": "10", "value": 0, "meaning": "unlocked"},
+  {"name": "USB_ID_LOCK", "bank": 0, "word": 0, "bits": "13:12", "value": 2, "meaning": "override-protect"},
+  {"name": "MAC_ADDR_LOCK", "bank": 0, "word": 0, "bits": "15:14", "value": 2, "meaning": "override-protect"},
+  {"name": "GP1_LOCK", "bank": 0, "word": 0, "bits": "21:20", "value": 2, "meaning": "override-protect"},
+  {"name": "GP2_LOCK", "bank": 0, "word": 0, "bits": "23:22", "value": 2, "meaning": "override-protect"}
+]}

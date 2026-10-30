@@ -1,0 +1,2 @@
+Reading bank 1 len 4 into 'cfg'
+cfg='247d1 1000000 7f 98002000'

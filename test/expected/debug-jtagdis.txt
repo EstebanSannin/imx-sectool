@@ -1,0 +1,11 @@
+SoC:              i.MX8M Plus (SJC backend)
+Secure debug:     jtag-disabled         TDX_SECURE_DEBUG_SJC_DISABLE="1"
+  JTAG_SMODE:     00 (JTAG enabled)     bank 1 word 3
+  SJC_DISABLE:    1                     bank 1 word 3
+  KTE:            0                     bank 1 word 3
+  BOOT_CFG_LOCK:  10 (override-protect) bank 0 word 0
+Secure boot:      closed
+Checks:
+  [PASS] JTAG / debug policy            jtag-disabled
+  [PASS] JTAG mode locked               BOOT_CFG_LOCK has override-protect
+Result:           ok

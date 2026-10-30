@@ -1,0 +1,4 @@
+Reading bank 4:
+
+Word 0x00000000:mxc_ocotp fuse_read(): Access protect error
+ERROR

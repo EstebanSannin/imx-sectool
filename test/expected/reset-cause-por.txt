@@ -1,0 +1,3 @@
+Reset cause: POR  (SRC_SRSR 0x00000001)
+note: on i.MX8M Plus, a power-on and a reboot leave the same SRC_SRSR value by the
+      time Linux runs, so this cannot tell them apart.

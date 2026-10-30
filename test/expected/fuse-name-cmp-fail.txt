@@ -1,0 +1,3 @@
+Comparing TEMP_GRADE:
+Value 0x3:0x2
+failed

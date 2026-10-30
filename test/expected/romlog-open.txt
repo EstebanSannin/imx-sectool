@@ -1,0 +1,18 @@
+ROM log at 0x009112f8:
+  e0000000  event 0xe0 (arg 0x000000)
+  22000000  event 0x22 (arg 0x000000)
+  31000000  event 0x31 (arg 0x000000)
+  41000000  event 0x41 (arg 0x000000)
+  61000000  event 0x61 (arg 0x000000)
+  82000000  device driver pre-config     ts=0x00000ee9
+  83000000  event 0x83 (arg 0x000000)
+  80000000  device init start            ts=0x00000ef3
+  81000000  device init done             ts=0x0000d149
+  50000000  boot from primary image
+  90000000  read start                   arg=0x00000000
+  91000000  read done                    ts=0x0000d154
+  90000000  read start                   arg=0x00000008
+  91000000  read done                    ts=0x0000d9a1
+  a0000000  image authentication result  result=0x00cf1133 ts=0x0000dab2
+  c0000000  jump to boot image           addr=0x00920000 ts=0x0000edc2
+Boot image: primary

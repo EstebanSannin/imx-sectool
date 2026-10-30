@@ -1,0 +1,1 @@
+SEC_CONFIG[1] = 0x0 (open)  (bank 1 word 3 bits 25, word 0x98002000)
