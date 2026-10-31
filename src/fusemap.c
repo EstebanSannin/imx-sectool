@@ -44,6 +44,7 @@ const char *field_meaning(const struct fuse_field *f, uint32_t v, char *buf,
 					    "automotive (-40..125 C)" };
 	static const unsigned int speed_8mm[] = { 800,	1200, 1600, 1800,
 						  2000, 0,    0,    0 };
+	static const unsigned int speed_7d[] = { 800, 500, 1000, 1200 };
 	unsigned int mib;
 	char *p;
 	int k;
@@ -65,6 +66,8 @@ const char *field_meaning(const struct fuse_field *f, uint32_t v, char *buf,
 	if (!strcmp(f->name, "SPEED_GRADING")) {
 		if (!strcmp(soc->soc_id, "i.MX8MM"))
 			snprintf(buf, n, "%u MHz", speed_8mm[v & 7]);
+		else if (!strcmp(soc->soc_id, "i.MX7D"))
+			snprintf(buf, n, "%u MHz", speed_7d[v & 3]);
 		else
 			snprintf(buf, n, "%u MHz", 2300 - (v & 0xf) * 100);
 		return buf;

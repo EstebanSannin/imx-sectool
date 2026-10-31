@@ -12,6 +12,8 @@
 #   clobbered/   HAB persistent area overwritten
 #   mm-open/     i.MX8M Mini, open, fuses as on a real Verdin iMX8MM
 #   mm-auth/     i.MX8M Mini, closed, Secure JTAG (authenticated)
+#   mx7-open/    i.MX7D, open, fuses and HAB store as on a real Colibri iMX7D
+#   mx7-closed/  i.MX7D, closed, no debug, no HAB events
 #
 # License: MIT.  Author: Stefano Viola <stefano.viola@toradex.com>
 import os, struct, sys
@@ -76,6 +78,60 @@ def scenario_8mm(outdir, name, auth):
     d = os.path.join(outdir, name)
     os.makedirs(d, exist_ok=True)
     open(os.path.join(d, "nvmem.bin"), "wb").write(nvmem_8mm(auth))
+
+
+def nvmem_7d(closed):
+    fuses = [0] * (16 * WORDS_PER_BANK)
+    # locks, banks 1-3 as read on an open Colibri iMX7D
+    fuses[0:4] = [0xa0030103, 0x11111111, 0x22222222, 0]             # fake UID
+    fuses[4:8] = [0x20000240, 0x10020000, 0x00000000, 0x100028e4]
+    fuses[8:12] = [0, 0, 0x00000002, 0]
+    fuses[12:16] = [0x4b000000, 0xef000000, 0x000003db, 0x000dd000]
+    for b in (4, 5, 10, 11, 15):                                     # read-locked
+        fuses[b * 4:b * 4 + 4] = [0xbadabada] * 4
+    fuses[36:39] = [0x02030405, 0x0a0b0001, 0x10111213]             # fake MACs
+    if closed:
+        fuses[0] |= 0x00000208                                       # SRK_LOCK, BOOT_CFG_LOCK OP
+        fuses[7] |= 0x02000000 | 0x00C00000 | 0x00100000             # SEC_CONFIG, no debug, KTE
+        fuses[24:32] = [0xa5a5a5a5] * 8                              # SRK hash
+    return words_to_bytes(fuses)
+
+
+# HAB store 0 (0x9049c0) as read from Linux on an open Colibri iMX7D,
+# up to the last event record: 1x INV_CSF, 4x INV_ASSERTION
+HAB_STORE_7D = [
+    0x4214000c, 0x00000033, 0x000000ee, 0, 0, 0x42080009, 0x000c6c3f, 0xe1200003,
+    0x000000ff, 0x00000005, 0, 0, 0, 0, 0, 0x42500000,
+    0x0000001e, 0x00000001, 0, 0, 0x42140000, 0x80d6bffb, 0, 0x00000020,
+    0x44107d00, 0xe2280003, 0x0000001d, 0x00000004, 0, 0, 0, 0,
+    0x00000001, 0x00000002, 0x00102000, 0x420c0005, 0x00000004, 0, 0x040a000a, 0x53937142,
+    0xada000d0, 0x420800db, 0x00cf1133, 0x421400db, 0x00a00c33, 0, 0x00f47f87, 0x20000000,
+    0x421400db, 0x00a00c33, 0, 0x2cf47f87, 0xb4010000, 0x421400db, 0x00a00c33, 0,
+    0x20f47f87, 0x01000000, 0x421400db, 0x00a00c33, 0, 0x00008087, 0x04000000,
+]
+
+
+def scenario_7d(outdir, name, closed):
+    d = os.path.join(outdir, name)
+    os.makedirs(d, exist_ok=True)
+    open(os.path.join(d, "nvmem.bin"), "wb").write(nvmem_7d(closed))
+
+    ocram = bytearray(0x2000)
+    store = list(HAB_STORE_7D)
+    if closed:
+        first_event = 0xa4 // 4
+        store = store[:first_event] + [0] * (len(store) - first_event)
+    put(ocram, 0x9c0, store)
+    open(os.path.join(d, "ocram-hab.bin"), "wb").write(ocram)
+
+    src = bytearray(0x100)
+    put(src, 0x58, [0x000028e4, 0])
+    put(src, 0x70, [0x00000012 if closed else 0x00000011])
+    open(os.path.join(d, "src.bin"), "wb").write(src)
+
+    snvs = bytearray(0x100)
+    put(snvs, 0x14, [0x80009d00 if closed else 0x80009b00])
+    open(os.path.join(d, "snvs-hp.bin"), "wb").write(snvs)
 
 
 # HAB persistent area as read with 'md.l 0x90d040' in U-Boot
@@ -151,6 +207,8 @@ def main():
     scenario(out, "weakdebug", closed=True, events=False, debug="no-debug-nokte")
     scenario_8mm(out, "mm-open", auth=False)
     scenario_8mm(out, "mm-auth", auth=True)
+    scenario_7d(out, "mx7-open", closed=False)
+    scenario_7d(out, "mx7-closed", closed=True)
 
     # imx-config.fuse as meta-toradex-security writes it (template + values)
     srk = "".join("H:F:%d:%d:0xA5A5A5A5\n" % (6 + i // 4, i % 4) for i in range(8))

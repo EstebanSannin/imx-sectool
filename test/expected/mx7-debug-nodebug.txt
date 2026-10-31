@@ -1,0 +1,14 @@
+SoC:              i.MX7Dual (SJC backend)
+Secure debug:     no-debug              TDX_SECURE_DEBUG_MODE="no-debug"
+  JTAG_SMODE:     11 (No debug)         bank 1 word 3
+  SJC_DISABLE:    0                     bank 1 word 3
+  KTE:            1 (trace gated)       bank 1 word 3
+  JTAG_HEO:       0                     bank 1 word 3
+  BOOT_CFG_LOCK:  10 (override-protect) bank 0 word 0
+  SJC_RESP:       not programmed
+Secure boot:      closed
+Checks:
+  [PASS] JTAG / debug policy            no-debug
+  [PASS] JTAG mode locked               BOOT_CFG_LOCK has override-protect
+  [PASS] Expected mode                  no-debug
+Result:           ok

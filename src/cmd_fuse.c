@@ -187,7 +187,7 @@ static int fuse_prog(uint32_t bank, uint32_t word, uint32_t val, int confirmed)
 static int fuse_named(const char *op, int argc, char **argv, int confirmed)
 {
 	const struct fuse_field *f = field_find(argv[0]);
-	uint32_t mask = FIELD_MASK(f->width), w, v, req;
+	uint32_t mask = FIELD_MASK(f->width), w, v, req = 0;
 	char b[16], mb[64];
 	const char *m;
 	int need, ret;

@@ -221,7 +221,7 @@ Rules for B and C:
 
 | Family | fuse | hab/ahab status | bootinfo, romlog | reset-cause |
 |---|---|---|---|---|
-| i.MX6/7 | A | fuse + SNVS; events via C (address to find) | SRC (B) | SRC (B) |
+| i.MX6/7 | A | fuse + SNVS; events via C (found on i.MX7D) | SRC (B); no ROM log | SRC (B), cleared by U-Boot |
 | i.MX8M | A | fuse + SNVS; events via C | SRC (B), ROM log (C) | SRC (B), not reliable on 8MP |
 | i.MX8QM/QXP | A | lifecycle from fuses; events need E | needs E | — |
 | i.MX8ULP, i.MX9 | D (A for read) | D | ROM passover data (C) | SRC (B) |
@@ -476,6 +476,40 @@ The fuse commands were checked on an open Verdin iMX8M Mini. No `/dev/mem`
 region is enabled yet, so `hab_status`, `romlog`, `bootinfo` and two audit
 checks report "unavailable".
 
+### i.MX7Dual
+
+Differences from the i.MX8M Plus:
+
+| Item | Value | Source |
+|---|---|---|
+| Fuse layout | 16 banks of 4 words | Linux `imx-ocotp.c` |
+| SRK hash lock | `SRK_LOCK`, bank 0 word 0 bit 9 | crucible IMX7D fusemap |
+| `SRK_REVOKE` | 3 bits, bank 9 word 3 | same |
+| Secure debug | Secure JTAG (`JTAG_SMODE=01`) is supported | meta-toradex-security `imx7-sjc-template.fuse` |
+| `SDP_DISABLE` | bank 2 word 0 bit 9 | crucible IMX7D fusemap |
+| `SPEED_GRADING` | bank 1 word 0 bits 9:8: 800, 500, 1000, 1200 MHz | U-Boot |
+| HAB ROM vector table | `0x100` | U-Boot `hab.h` |
+| HAB event area | store 0, `0x009049c0` to `0x0090553f`; event records 4-byte aligned | ROM store table at `0x11598`, found on hardware |
+| OCRAM read window | `0x904000` to `0x906000` | page that holds store 0 |
+| ROM log | none | |
+
+The HAB store has the same records as on the i.MX8M Plus: `EVT_DEF` first,
+then the events. The ROM's `report_event()` reads its records from store 0.
+
+Linux shows `ocram_clk` with an enable count of 0, but the clock gate
+(`CCGR17`, CCM + `0x4110`) reads `0x2`, so OCRAM is clocked and can be read.
+
+Reading the Boot ROM from Linux can hang this SoC (the watchdog then resets
+it), at different offsets on each try. The tool does not read the ROM on
+the i.MX7.
+
+U-Boot clears `SRC_SRSR` after it reads it, so `reset-cause` usually reports
+"unknown".
+
+Checked on an open Colibri iMX7D: the fuse values, the SNVS state and the
+five HAB events (`HAB_INV_CSF`, then four `HAB_INV_ASSERTION`) that an open
+board shows with an unsigned image.
+
 ## 9. meta-toradex-security
 
 | In the layer | In imx-sectool |
@@ -506,8 +540,10 @@ A recipe `imx-sectool_git.bb` could live in the layer.
 
 - i.MX8M Mini: check the Boot ROM regions and the HAB event area on
   hardware.
-- i.MX8M Nano and Quad, then i.MX9 (ELE), then i.MX6/7, then SCU parts
-  (i.MX8/8X).
+- i.MX8M Nano and Quad, then i.MX9 (ELE), then i.MX6 and i.MX7Solo, then
+  SCU parts (i.MX8/8X).
+- i.MX7D: compare `hab_status` with U-Boot on the same boot, and test a
+  closed board.
 - Optional kernel helper for the TF-A HAB call on i.MX8M and the SCU
   security calls, proposed upstream as a sysfs interface.
 - U-Boot could copy the HAB events and ROM log into the device tree

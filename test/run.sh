@@ -141,5 +141,21 @@ case_ mm-hab-status          mm-auth   3 hab_status
 case_ mm-bootinfo            mm-open   3 "$BIN" bootinfo
 case_ mm-audit               mm-auth   3 "$BIN" audit
 
+# i.MX7D: HAB store at 0x9049c0, no ROM log
+SOC=i.MX7D
+case_ mx7-fuse-read          mx7-open   0 fuse read 1 0 4
+case_ mx7-fuse-read-invalid  mx7-open   1 fuse read 16 0
+case_ mx7-hab-open-events    mx7-open   1 hab_status
+case_ mx7-hab-closed-clean   mx7-closed 0 hab_status
+case_ mx7-fusemap-all        mx7-open   0 "$BIN" fusemap
+case_ mx7-fusemap-speed      mx7-open   0 "$BIN" fusemap SPEED_GRADING
+case_ mx7-debug-open         mx7-open   1 "$BIN" debug-status
+case_ mx7-debug-nodebug      mx7-closed 0 "$BIN" debug-status --expect no-debug
+case_ mx7-audit-open         mx7-open   1 "$BIN" audit
+case_ mx7-audit-closed       mx7-closed 5 "$BIN" audit
+case_ mx7-romlog             mx7-open   3 "$BIN" romlog
+case_ mx7-bootinfo           mx7-open   0 "$BIN" bootinfo
+case_ mx7-reset-cause        mx7-open   3 "$BIN" reset-cause
+
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]

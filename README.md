@@ -46,6 +46,7 @@ The tool is plain C11 and needs only libc.
 ```
 make                                            # native build
 make CC=aarch64-linux-gnu-gcc LDFLAGS=-static   # static build for arm64
+make CC=arm-linux-gnueabihf-gcc LDFLAGS=-static # static build for i.MX7
 make check                                      # host tests (needs python3)
 make install PREFIX=/usr INSTALL_ALIASES=1      # also installs 'fuse' and 'hab_status'
 ```
@@ -56,6 +57,7 @@ make install PREFIX=/usr INSTALL_ALIASES=1      # also installs 'fuse' and 'hab_
 |---|---|
 | i.MX8M Plus | All commands, tested on hardware |
 | i.MX8M Mini | Fuse commands, `fusemap`, `debug-status` and `audit`, tested on an open board. `hab_status`, `romlog` and `bootinfo` report "unavailable" until the Boot ROM memory regions are checked on hardware |
+| i.MX7Dual | All commands, tested on an open board. The i.MX7 Boot ROM keeps no ROM log, so `romlog` reports "unavailable" |
 
 On any other SoC the tool stops before reading anything.
 
@@ -66,14 +68,15 @@ Planned:
 | i.MX8M Nano, Quad | HABv4 | Same family as the i.MX8M Plus; next to come |
 | i.MX93, i.MX91, i.MX95 | AHAB (EdgeLock Enclave) | Adds `ahab_status` |
 | i.MX8ULP | AHAB (EdgeLock Enclave) | |
-| i.MX6, i.MX6UL/ULL, i.MX7 | HABv4 | HAB event area to be found on hardware |
+| i.MX6, i.MX6UL/ULL, i.MX7Solo | HABv4 | HAB event area to be found on hardware |
 | i.MX8QM, i.MX8QXP, i.MX8DXL | AHAB (SCU) | Fuses only at first; AHAB events need a kernel helper |
 
 See [DESIGN.md](DESIGN.md) for the details.
 
 ## Credits
 
-The i.MX8M Plus and i.MX8M Mini fuse positions come from the fusemaps of
+The i.MX8M Plus, i.MX8M Mini and i.MX7Dual fuse positions come from the
+fusemaps of
 [usbarmory/crucible](https://github.com/usbarmory/crucible) (BSD-3-Clause,
 Copyright (c) The crucible authors) and from the meta-toradex-security fuse
 templates.

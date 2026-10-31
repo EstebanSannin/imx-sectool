@@ -123,6 +123,7 @@ static const struct soc_desc imx8mp = {
 	.rom_log_hi = 0x00b00000,
 	.hab_persist = 0x0090d040,
 	.hab_persist_size = 0x400,
+	.hab_evt_align = 8,
 	.src_base = 0x30390000,
 	.snvs_base = 0x30370000,
 	/* power-cycle, reboot, sysrq reboot and panic restart all leave
@@ -244,7 +245,127 @@ static const struct soc_desc imx8mm = {
 	.secure_jtag = 1,
 };
 
-static const struct soc_desc *const socs[] = { &imx8mp, &imx8mm };
+/* ---- i.MX7Dual ------------------------------------------------------------ */
+
+/* Only the OCRAM page holding HAB store 0. Reading the Boot ROM from Linux
+ * can hang this SoC, so no ROM region is listed.
+ */
+static const struct mem_region imx7d_regions[] = {
+	{ "ocram-hab", 0x00904000, 0x2000 },
+	{ "src", 0x30390000, 0x100 },
+	{ "snvs-hp", 0x30370000, 0x100 },
+};
+
+/* Positions from the IMX7D fusemap of usbarmory/crucible, the
+ * meta-toradex-security imx7 templates and U-Boot (SPEED_GRADING,
+ * TEMP_GRADE).
+ */
+static const struct fuse_field imx7d_fields[] = {
+	/* OCOTP_LOCK, bank 0 word 0 */
+	{ "TESTER_LOCK", 0, 0, 0, 2 },
+	{ "BOOT_CFG_LOCK", 0, 0, 2, 2 },
+	{ "MEM_TRIM_LOCK", 0, 0, 4, 2 },
+	{ "ANALOG_LOCK", 0, 0, 6, 2 },
+	{ "OTPMK_LOCK", 0, 0, 8, 1 },
+	{ "SRK_LOCK", 0, 0, 9, 1 },
+	{ "SJC_RESP_LOCK", 0, 0, 10, 1 },
+	{ "USB_ID_LOCK", 0, 0, 12, 2 },
+	{ "MAC_ADDR_LOCK", 0, 0, 14, 2 },
+	{ "MANUFACTURE_KEY_LOCK", 0, 0, 16, 1 },
+	{ "ROM_PATCH_LOCK", 0, 0, 17, 1 },
+	{ "GP1_LOCK", 0, 0, 20, 2 },
+	{ "GP2_LOCK", 0, 0, 22, 2 },
+	/* OCOTP_TESTER3, bank 1 word 0 */
+	{ "TEMP_GRADE", 1, 0, 6, 2 },
+	{ "SPEED_GRADING", 1, 0, 8, 2 },
+	/* OCOTP_TESTER4, bank 1 word 1 */
+	{ "NUM_A7_CORES", 1, 1, 0, 1 },
+	{ "M4_DISABLE", 1, 1, 8, 1 },
+	{ "SEC_CONFIG[0]", 1, 1, 17, 1 },
+	{ "FLEXCAN_DISABLE", 1, 1, 21, 1 },
+	{ "ADC_DISABLE", 1, 1, 22, 1 },
+	{ "PCIE_DISABLE", 1, 1, 23, 1 },
+	{ "EPDC_DISABLE", 1, 1, 28, 1 },
+	{ "ENET1_DISABLE", 1, 1, 29, 1 },
+	{ "ENET2_DISABLE", 1, 1, 30, 1 },
+	{ "MIPI_DISABLE", 1, 1, 31, 1 },
+	/* OCOTP_BOOT_CFG0, bank 1 word 3 */
+	{ "BOOT_CFG", 1, 3, 0, 16 },
+	{ "KTE", 1, 3, 20, 1 },
+	{ "SJC_DISABLE", 1, 3, 21, 1 },
+	{ "JTAG_SMODE", 1, 3, 22, 2 }, /* 00 enabled, 01 secure, 11 no debug */
+	{ "SEC_CONFIG[1]", 1, 3, 25, 1 }, /* closes the device */
+	{ "JTAG_HEO", 1, 3, 26, 1 },
+	{ "DIR_BT_DIS", 1, 3, 27, 1 },
+	{ "BT_FUSE_SEL", 1, 3, 28, 1 },
+	{ "FORCE_COLD_BOOT", 1, 3, 29, 1 },
+	/* OCOTP_BOOT_CFG1, bank 2 word 0 */
+	{ "SDP_READ_DISABLE", 2, 0, 8, 1 },
+	{ "SDP_DISABLE", 2, 0, 9, 1 },
+	{ "WDOG_ENABLE", 2, 0, 10, 1 },
+	{ "TZASC_ENABLE", 2, 0, 11, 1 },
+	/* bank 8 */
+	{ "USB_VID", 8, 2, 0, 16 },
+	{ "USB_PID", 8, 2, 16, 16 },
+	{ "FIELD_RETURN", 8, 3, 0, 1 },
+	/* bank 9 */
+	{ "SRK_REVOKE", 9, 3, 0, 3 },
+};
+
+static const struct fuse_reg imx7d_regs[] = {
+	{ "OCOTP_LOCK", 0, 0 },	      { "OCOTP_TESTER0", 0, 1 },
+	{ "OCOTP_TESTER1", 0, 2 },    { "OCOTP_TESTER2", 0, 3 },
+	{ "OCOTP_TESTER3", 1, 0 },    { "OCOTP_TESTER4", 1, 1 },
+	{ "OCOTP_TESTER5", 1, 2 },    { "OCOTP_BOOT_CFG0", 1, 3 },
+	{ "OCOTP_BOOT_CFG1", 2, 0 },  { "OCOTP_BOOT_CFG2", 2, 1 },
+	{ "OCOTP_BOOT_CFG3", 2, 2 },  { "OCOTP_BOOT_CFG4", 2, 3 },
+	{ "OCOTP_MEM_TRIM0", 3, 0 },  { "OCOTP_MEM_TRIM1", 3, 1 },
+	{ "OCOTP_MEM_ANA0", 3, 2 },   { "OCOTP_MEM_ANA1", 3, 3 },
+	{ "OCOTP_SRK0", 6, 0 },	      { "OCOTP_SRK1", 6, 1 },
+	{ "OCOTP_SRK2", 6, 2 },	      { "OCOTP_SRK3", 6, 3 },
+	{ "OCOTP_SRK4", 7, 0 },	      { "OCOTP_SRK5", 7, 1 },
+	{ "OCOTP_SRK6", 7, 2 },	      { "OCOTP_SRK7", 7, 3 },
+	{ "OCOTP_SJC_RESP0", 8, 0 },  { "OCOTP_SJC_RESP1", 8, 1 },
+	{ "OCOTP_USB_ID", 8, 2 },     { "OCOTP_FIELD_RETURN", 8, 3 },
+	{ "OCOTP_MAC_ADDR0", 9, 0 },  { "OCOTP_MAC_ADDR1", 9, 1 },
+	{ "OCOTP_MAC_ADDR2", 9, 2 },  { "OCOTP_SRK_REVOKE", 9, 3 },
+	{ "OCOTP_GP10", 14, 0 },      { "OCOTP_GP11", 14, 1 },
+	{ "OCOTP_GP20", 14, 2 },      { "OCOTP_GP21", 14, 3 },
+};
+
+/* HAB store 0 comes from the store table at ROM 0x11598; its records are
+ * packed on 4-byte boundaries. The i.MX7 ROM keeps no ROM log.
+ */
+static const struct soc_desc imx7d = {
+	.name = "i.MX7Dual",
+	.soc_id = "i.MX7D",
+	.banks = 16,
+	.words_per_bank = 4,
+	.nvmem_prefix = "imx-ocotp",
+	.sec_bank = 1,
+	.sec_word = 3,
+	.sec_mask = 0x02000000,
+	.regions = imx7d_regions,
+	.n_regions = ARRAY_SIZE(imx7d_regions),
+	.no_rom_log = 1,
+	.hab_persist = 0x009049c0,
+	.hab_persist_size = 0xb80,
+	.hab_evt_align = 4,
+	.src_base = 0x30390000,
+	.snvs_base = 0x30370000,
+	.srsr_reliable = 0, /* U-Boot clears SRSR after reading it */
+	.fields = imx7d_fields,
+	.n_fields = ARRAY_SIZE(imx7d_fields),
+	.regs = imx7d_regs,
+	.n_regs = ARRAY_SIZE(imx7d_regs),
+	.mac_bank = 9,
+	.srk_bank = 6,
+	.srk_words = 8,
+	.srk_lock = "SRK_LOCK",
+	.secure_jtag = 1,
+};
+
+static const struct soc_desc *const socs[] = { &imx8mp, &imx8mm, &imx7d };
 
 const struct soc_desc *soc;
 
@@ -343,7 +464,7 @@ int soc_detect(const char *force_id)
 		}
 	}
 	fprintf(stderr,
-		"error: SoC '%s' is not supported yet (supported: i.MX8MP, i.MX8MM)\n",
+		"error: SoC '%s' is not supported yet (supported: i.MX8MP, i.MX8MM, i.MX7D)\n",
 		id);
 	return EX_UNAVAIL;
 }

@@ -66,6 +66,11 @@ int cmd_romlog(int argc, char **argv)
 	(void)argc;
 	(void)argv;
 
+	if (soc->no_rom_log) {
+		fprintf(stderr, "error: the %s Boot ROM keeps no ROM log\n",
+			soc->name);
+		return EX_UNAVAIL;
+	}
 	if (mmio_read32(soc->rom_log_ptr, &ptr)) {
 		fprintf(stderr, "error: ROM log unavailable: %s\n",
 			mmio_error());
@@ -150,7 +155,9 @@ int cmd_romlog(int argc, char **argv)
 
 /* ---- reset cause ------------------------------------------------------------ */
 
-/* SRSR bits with U-Boot's names (arch/arm/mach-imx/cpu.c, i.MX8M) */
+/* SRSR bits with U-Boot's names (arch/arm/mach-imx/cpu.c, i.MX8M; the
+ * i.MX7 calls 0x10 WDOG1 and 0x100 WDOG4, see srsr_name())
+ */
 static const struct {
 	uint32_t bit;
 	const char *name;
@@ -162,6 +169,17 @@ static const struct {
 	{ 0x00200, "TEMPSENSE" },
 };
 #define N_SRSR_BITS (ARRAY_SIZE(srsr_bits))
+
+static const char *srsr_name(size_t i)
+{
+	if (!strncmp(soc->soc_id, "i.MX7", 5)) {
+		if (srsr_bits[i].bit == 0x10)
+			return "WDOG1";
+		if (srsr_bits[i].bit == 0x100)
+			return "WDOG4";
+	}
+	return srsr_bits[i].name;
+}
 
 int cmd_reset_cause(int argc, char **argv)
 {
@@ -183,7 +201,7 @@ int cmd_reset_cause(int argc, char **argv)
 		for (i = 0; i < N_SRSR_BITS; i++)
 			if (srsr & srsr_bits[i].bit) {
 				printf("%s\"%s\"", first ? "" : ", ",
-				       srsr_bits[i].name);
+				       srsr_name(i));
 				first = 0;
 			}
 		printf("], \"reliable\": %s}\n",
@@ -201,7 +219,7 @@ int cmd_reset_cause(int argc, char **argv)
 	for (i = 0; i < N_SRSR_BITS; i++) {
 		known |= srsr_bits[i].bit;
 		if (srsr & srsr_bits[i].bit) {
-			printf("%s%s", first ? "" : " + ", srsr_bits[i].name);
+			printf("%s%s", first ? "" : " + ", srsr_name(i));
 			first = 0;
 		}
 	}
@@ -228,6 +246,10 @@ int romlog_summary(struct romlog_info *ri, const char **why)
 	uint8_t id;
 
 	memset(ri, 0, sizeof(*ri));
+	if (soc->no_rom_log) {
+		*why = "this Boot ROM keeps no ROM log";
+		return -1;
+	}
 	if (mmio_read32(soc->rom_log_ptr, &ptr)) {
 		*why = mmio_error();
 		return -1;
@@ -303,7 +325,8 @@ int cmd_bootinfo(int argc, char **argv)
 	of = field_find("IMG_CNTN_SET1_OFFSET");
 	have_off = !of || field_read(of->name, &off) == 0;
 
-	if (!have_src || !have_log || !have_sel || !have_off || !have_sec)
+	if (!have_src || (!have_log && !soc->no_rom_log) || !have_sel ||
+	    !have_off || !have_sec)
 		rc = EX_UNAVAIL;
 
 	offs = have_off && of ? field_meaning(of, off, ob, sizeof(ob)) : NULL;

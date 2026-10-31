@@ -25,7 +25,7 @@
 #define MAX_REGIONS 8
 
 static volatile uint32_t *maps[MAX_REGIONS];
-static char errbuf[256];
+static char errbuf[768];
 
 const char *mmio_error(void)
 {

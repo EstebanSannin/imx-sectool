@@ -64,11 +64,13 @@ struct soc_desc {
 	const struct mem_region *regions;
 	size_t n_regions;
 
+	int no_rom_log; /* the Boot ROM keeps no event log (i.MX7) */
 	uint32_t rom_log_ptr; /* ROM address holding the ROM log pointer */
 	uint32_t rom_log_lo; /* valid range for that pointer */
 	uint32_t rom_log_hi;
 	uint32_t hab_persist; /* HAB persistent area (EVT_DEF record) */
 	uint32_t hab_persist_size; /* bytes searched for event records */
+	uint32_t hab_evt_align; /* event record alignment, 8 if 0 */
 	uint32_t src_base;
 	uint32_t snvs_base;
 	int srsr_reliable; /* SRSR still tells warm from cold in Linux */

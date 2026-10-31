@@ -1,0 +1,43 @@
+FIELD                    BK/WD  BITS   VALUE
+TESTER_LOCK               0/0  1:0    0x3      write+override-protect
+BOOT_CFG_LOCK             0/0  3:2    0x0      unlocked
+MEM_TRIM_LOCK             0/0  5:4    0x0      unlocked
+ANALOG_LOCK               0/0  7:6    0x0      unlocked
+OTPMK_LOCK                0/0  8      0x1      locked
+SRK_LOCK                  0/0  9      0x0      unlocked
+SJC_RESP_LOCK             0/0  10     0x0      unlocked
+USB_ID_LOCK               0/0  13:12  0x0      unlocked
+MAC_ADDR_LOCK             0/0  15:14  0x0      unlocked
+MANUFACTURE_KEY_LOCK      0/0  16     0x1      locked
+ROM_PATCH_LOCK            0/0  17     0x1      locked
+GP1_LOCK                  0/0  21:20  0x0      unlocked
+GP2_LOCK                  0/0  23:22  0x0      unlocked
+TEMP_GRADE                1/0  7:6    0x1      extended commercial (-20..105 C)
+SPEED_GRADING             1/0  9:8    0x2      1000 MHz
+NUM_A7_CORES              1/1  0      0x0
+M4_DISABLE                1/1  8      0x0
+SEC_CONFIG[0]             1/1  17     0x1
+FLEXCAN_DISABLE           1/1  21     0x0
+ADC_DISABLE               1/1  22     0x0
+PCIE_DISABLE              1/1  23     0x0
+EPDC_DISABLE              1/1  28     0x1
+ENET1_DISABLE             1/1  29     0x0
+ENET2_DISABLE             1/1  30     0x0
+MIPI_DISABLE              1/1  31     0x0
+BOOT_CFG                  1/3  15:0   0x28e4
+KTE                       1/3  20     0x0
+SJC_DISABLE               1/3  21     0x0
+JTAG_SMODE                1/3  23:22  0x0      JTAG enabled
+SEC_CONFIG[1]             1/3  25     0x0      open
+JTAG_HEO                  1/3  26     0x0
+DIR_BT_DIS                1/3  27     0x0
+BT_FUSE_SEL               1/3  28     0x1      boot config from fuses
+FORCE_COLD_BOOT           1/3  29     0x0
+SDP_READ_DISABLE          2/0  8      0x0
+SDP_DISABLE               2/0  9      0x0
+WDOG_ENABLE               2/0  10     0x0
+TZASC_ENABLE              2/0  11     0x0
+USB_VID                   8/2  15:0   0x0
+USB_PID                   8/2  31:16  0x0
+FIELD_RETURN              8/3  0      0x0
+SRK_REVOKE                9/3  2:0    0x0      no key revoked

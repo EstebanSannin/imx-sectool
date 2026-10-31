@@ -11,7 +11,8 @@
  *   Events         the ROM's HAB persistent area in OCRAM: an EVT_DEF record
  *                  (tag 0x0C) followed by event records (tag 0xDB), the same
  *                  bytes report_event() copies out (verified against U-Boot on
- *                  i.MX8M Plus, docs/phase0-imx8mp.md)
+ *                  i.MX8M Plus, docs/phase0-imx8mp.md; same layout on
+ *                  i.MX7D)
  *
  * Output and exit code follow U-Boot with the meta-toradex-security patch:
  * exit 1 when any event is present.
@@ -163,6 +164,7 @@ static int read_events(struct hab_event *ev, int max, const char **why)
 {
 	static uint8_t area[0x1000];
 	uint32_t size = soc->hab_persist_size;
+	size_t align = soc->hab_evt_align ? soc->hab_evt_align : 8;
 	size_t def_len, off, l;
 	const uint8_t *r;
 	uint8_t ver;
@@ -185,7 +187,7 @@ static int read_events(struct hab_event *ev, int max, const char **why)
 
 	/*
 	 * Other record types sit between EVT_DEF and the events: find the first
-	 * event record, then walk the contiguous list (records 8-byte aligned).
+	 * event record, then walk the contiguous list (aligned per SoC).
 	 */
 	for (off = (def_len + 3) & ~(size_t)3; off + 4 <= size; off += 4) {
 		l = rec_len(&area[off]);
@@ -203,7 +205,7 @@ static int read_events(struct hab_event *ev, int max, const char **why)
 		memcpy(ev[n].data, r, l);
 		ev[n].len = l;
 		n++;
-		off = ((soc->hab_persist + off + l + 7) & ~(size_t)7) -
+		off = ((soc->hab_persist + off + l + align - 1) & ~(align - 1)) -
 		      soc->hab_persist;
 	}
 	return n;

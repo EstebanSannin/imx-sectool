@@ -1,0 +1,2 @@
+SPEED_GRADING: bank 1 word 0 bits 9:8
+  value 0x2 (1000 MHz)  (word 0x20000240)

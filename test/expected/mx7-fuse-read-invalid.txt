@@ -1,0 +1,4 @@
+Reading bank 16:
+
+Word 0x00000000:mxc_ocotp fuse_read(): Invalid argument
+ERROR
