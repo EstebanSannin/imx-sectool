@@ -59,7 +59,7 @@ make install PREFIX=/usr INSTALL_ALIASES=1      # also installs 'fuse' and 'hab_
 |---|---|
 | i.MX8M Plus | All commands except `ahab_status`, tested on hardware |
 | i.MX8M Mini | Fuse commands, `fusemap`, `debug-status` and `audit`, tested on an open board. `hab_status`, `romlog` and `bootinfo` report "unavailable" until the Boot ROM memory regions are checked on hardware |
-| i.MX7Dual | Fuses, HAB events and debug checks tested on an open board. `bootinfo` reads the boot device through the ROM pointer and shows the primary/secondary selection. The boot image and authentication result remain unavailable. No ROM log; U-Boot usually clears the reset cause |
+| i.MX7Dual | Fuses, HAB events and debug checks tested on an open board. `bootinfo` reads the boot device through the ROM pointer and shows the primary/secondary selection. The ROM log reports the image selection, authentication result and entry address, but not the eMMC boot partition; U-Boot usually clears the reset cause |
 | i.MX8QM | `ahab_status`: lifecycle and firmware version; events through optional UIO setup, tested on hardware |
 | i.MX8QXP | `ahab_status`: lifecycle and firmware version; events through optional UIO setup, tested on hardware |
 
@@ -76,6 +76,8 @@ Planned:
 | i.MX8DXL | AHAB (SCU) | Driver and mailbox support to be checked |
 
 See [DESIGN.md](DESIGN.md) for the details.
+The [i.MX7 secondary-boot note](docs/imx7-secondary-boot.md) explains
+same-partition fallback and a proposed bootloader rollback mechanism.
 
 ## Credits
 

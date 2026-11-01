@@ -125,6 +125,16 @@ def scenario_7d(outdir, name, closed):
     open(os.path.join(d, "ocram-hab.bin"), "wb").write(ocram)
     boot = bytearray(0x20000)
     put(boot, 0x90c4, [0x00020200])  # ROM reports MMC instance 2 (MMC3)
+    put(boot, 0x9168, [
+        0x10000000, 0x22000000, 0x30000000, 0x41000000,
+        0x50000000, 0x61000000, 0x80000000, 0x70,
+        0x81000000, 0x9eb, 0x90000000, 0,
+        0x91000000, 0x9eb, 0x90000000, 8,
+        0x91000000, 0xaf0, 0xa0000000,
+        0xf0 if closed else 0x00cf1133, 0xaf7,
+        0xc0000000, 0x87800000, 0xafe,
+    ])
+    open(os.path.join(d, "rom-log-ptr.bin"), "wb").write(words_to_bytes([0x00909168]))
     open(os.path.join(d, "ocram-boot.bin"), "wb").write(boot)
     open(os.path.join(d, "rom-sw-info.bin"), "wb").write(words_to_bytes([0x009090c4]))
 

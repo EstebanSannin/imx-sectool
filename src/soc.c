@@ -252,6 +252,7 @@ static const struct soc_desc imx8mm = {
 static const struct mem_region imx7d_regions[] = {
 	{ "ocram-hab", 0x00904000, 0x2000 },
 	{ "rom-sw-info", 0x000001e8, 4 },
+	{ "rom-log-ptr", 0x000001e0, 4 },
 	{ "ocram-boot", 0x00900000, 0x20000 },
 	{ "src", 0x30390000, 0x100 },
 	{ "snvs-hp", 0x30370000, 0x100 },
@@ -335,7 +336,7 @@ static const struct fuse_reg imx7d_regs[] = {
 };
 
 /* HAB store 0 comes from the store table at ROM 0x11598; its records are
- * packed on 4-byte boundaries. The i.MX7 ROM keeps no ROM log.
+ * packed on 4-byte boundaries.
  */
 static const struct soc_desc imx7d = {
 	.name = "i.MX7Dual",
@@ -348,7 +349,10 @@ static const struct soc_desc imx7d = {
 	.sec_mask = 0x02000000,
 	.regions = imx7d_regions,
 	.n_regions = ARRAY_SIZE(imx7d_regions),
-	.no_rom_log = 1,
+	.rom_log_words = 64,
+	.rom_log_ptr = 0x1e0,
+	.rom_log_lo = 0x00900000,
+	.rom_log_hi = 0x00920000,
 	.hab_persist = 0x009049c0,
 	.hab_persist_size = 0xb80,
 	.hab_evt_align = 4,

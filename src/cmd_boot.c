@@ -2,12 +2,9 @@
 /*
  * imx-sectool -- boot-time information: 'romlog' and 'reset-cause'.
  *
- * romlog       The i.MX8M Boot ROM keeps an event log in OCRAM; a pointer to
- *              it sits at a fixed ROM address (0x9e0). Event IDs and their
- *              parameter counts follow U-Boot's
- *              imx8m_detect_secondary_image_boot() and NXP AN12853; IDs not
- *              documented there are printed raw. Event 0x51 means the ROM fell
- *              back to the secondary boot image.
+ * romlog       Reads the i.MX7/8M ROM log through its ROM pointer.
+ *              Unknown event IDs are printed raw. The secondary marker
+ *              identifies an image selection, not an eMMC partition.
  *
  * reset-cause  SRC_SRSR, decoded with U-Boot's strings. Some bootloaders
  *              clear SRSR after reading it; then nothing is left to report.
@@ -54,10 +51,49 @@ static const struct rom_event *rom_event_find(uint8_t id)
 	return NULL;
 }
 
+/* Validate the whole buffer before using it as boot evidence. */
+static int read_romlog(uint32_t *ptr, uint32_t *log, int *count,
+		       const char **why)
+{
+	const struct rom_event *e;
+	unsigned int words = soc->rom_log_words ? soc->rom_log_words :
+			     ROM_LOG_MAX_WORDS;
+	unsigned int i, np;
+
+	if (mmio_read32(soc->rom_log_ptr, ptr)) {
+		*why = mmio_error();
+		return EX_UNAVAIL;
+	}
+	*why = "ROM log pointer is not valid";
+	if (!words || words > ROM_LOG_MAX_WORDS || (*ptr & 3) ||
+	    *ptr < soc->rom_log_lo || *ptr >= soc->rom_log_hi ||
+	    words * 4 > soc->rom_log_hi - *ptr)
+		return EX_UNTRUSTED;
+	if (mmio_read(*ptr, log, words * sizeof(*log))) {
+		*why = mmio_error();
+		return EX_UNAVAIL;
+	}
+	*why = "ROM log is empty or incomplete";
+	for (i = 0; i < words; i += np + 1) {
+		if (!log[i]) {
+			*count = i;
+			return i ? EX_OK : EX_UNTRUSTED;
+		}
+		if (!(log[i] >> 24))
+			return EX_UNTRUSTED;
+		e = rom_event_find(log[i] >> 24);
+		np = e ? e->nparams : 0;
+		if (np >= words - i)
+			return EX_UNTRUSTED;
+	}
+	return EX_UNTRUSTED;
+}
+
 int cmd_romlog(int argc, char **argv)
 {
 	uint32_t ptr, log[ROM_LOG_MAX_WORDS];
-	int secondary = 0, ended = 0;
+	int secondary = 0, have_image = 0, count, rc;
+	const char *why;
 	const struct rom_event *e;
 	int i, p, np;
 	uint8_t id;
@@ -66,26 +102,10 @@ int cmd_romlog(int argc, char **argv)
 	(void)argc;
 	(void)argv;
 
-	if (soc->no_rom_log) {
-		fprintf(stderr, "error: the %s Boot ROM keeps no ROM log\n",
-			soc->name);
-		return EX_UNAVAIL;
-	}
-	if (mmio_read32(soc->rom_log_ptr, &ptr)) {
-		fprintf(stderr, "error: ROM log unavailable: %s\n",
-			mmio_error());
-		return EX_UNAVAIL;
-	}
-	if (ptr < soc->rom_log_lo || ptr >= soc->rom_log_hi || (ptr & 3)) {
-		fprintf(stderr,
-			"error: ROM log pointer 0x%08x at 0x%x is not valid\n",
-			ptr, soc->rom_log_ptr);
-		return EX_UNTRUSTED;
-	}
-	if (mmio_read(ptr, log, sizeof(log))) {
-		fprintf(stderr, "error: ROM log at 0x%08x unavailable: %s\n",
-			ptr, mmio_error());
-		return EX_UNAVAIL;
+	rc = read_romlog(&ptr, log, &count, &why);
+	if (rc) {
+		fprintf(stderr, "error: ROM log unavailable: %s\n", why);
+		return rc;
 	}
 
 	if (opt_json)
@@ -93,20 +113,15 @@ int cmd_romlog(int argc, char **argv)
 	else
 		printf("ROM log at 0x%08x:\n", ptr);
 
-	for (i = 0; i < ROM_LOG_MAX_WORDS; i++) {
+	for (i = 0; i < count; i++) {
 		w = log[i];
 		id = w >> 24;
-		if (id == 0x00) {
-			ended = 1;
-			break;
+		if (id == 0x50 || id == 0x51) {
+			have_image = 1;
+			secondary = id == 0x51;
 		}
-		if (id == 0x51)
-			secondary = 1;
-
 		e = rom_event_find(id);
 		np = e ? e->nparams : 0;
-		if (i + np >= ROM_LOG_MAX_WORDS)
-			np = ROM_LOG_MAX_WORDS - 1 - i;
 
 		if (opt_json) {
 			printf("%s\n  {\"raw\": \"0x%08x\", \"id\": \"0x%02x\", \"name\": ",
@@ -140,15 +155,15 @@ int cmd_romlog(int argc, char **argv)
 	}
 
 	if (opt_json) {
-		printf("\n], \"complete\": %s, \"boot_image\": \"%s\"}\n",
-		       ended ? "true" : "false",
-		       secondary ? "secondary" : "primary");
+		printf("\n], \"complete\": true, \"boot_image\": ");
+		if (have_image)
+			printf("\"%s\"", secondary ? "secondary" : "primary");
+		else
+			printf("null");
+		puts("}");
 	} else {
-		if (!ended)
-			printf("  (no end marker within %d words)\n",
-			       ROM_LOG_MAX_WORDS);
-		printf("Boot image: %s\n",
-		       secondary ? "SECONDARY (ROM fell back)" : "primary");
+		printf("Boot image: %s\n", !have_image ? "unavailable" :
+		       secondary ? "SECONDARY" : "primary");
 	}
 	return EX_OK;
 }
@@ -246,38 +261,22 @@ int romlog_summary(struct romlog_info *ri, const char **why)
 {
 	uint32_t ptr, log[ROM_LOG_MAX_WORDS];
 	const struct rom_event *e;
-	int i, np;
+	int i, np, count;
 	uint8_t id;
 
 	memset(ri, 0, sizeof(*ri));
-	if (soc->no_rom_log) {
-		*why = "this Boot ROM keeps no ROM log";
+	if (read_romlog(&ptr, log, &count, why))
 		return -1;
-	}
-	if (mmio_read32(soc->rom_log_ptr, &ptr)) {
-		*why = mmio_error();
-		return -1;
-	}
-	if (ptr < soc->rom_log_lo || ptr >= soc->rom_log_hi || (ptr & 3)) {
-		*why = "ROM log pointer is not valid";
-		return -1;
-	}
-	if (mmio_read(ptr, log, sizeof(log))) {
-		*why = mmio_error();
-		return -1;
-	}
 
 	ri->addr = ptr;
-	for (i = 0; i < ROM_LOG_MAX_WORDS; i++) {
+	for (i = 0; i < count; i++) {
 		id = log[i] >> 24;
-		if (id == 0x00)
-			break;
 		e = rom_event_find(id);
 		np = e ? e->nparams : 0;
-		if (i + np >= ROM_LOG_MAX_WORDS)
-			break;
-		if (id == 0x51)
-			ri->secondary = 1;
+		if (id == 0x50 || id == 0x51) {
+			ri->have_image = 1;
+			ri->secondary = id == 0x51;
+		}
 		if (id == 0xa0 && !ri->have_auth) {
 			ri->have_auth = 1;
 			ri->auth = log[i + 1];
@@ -287,6 +286,10 @@ int romlog_summary(struct romlog_info *ri, const char **why)
 			ri->jump = log[i + 1];
 		}
 		i += np;
+	}
+	if (!ri->have_image) {
+		*why = "ROM log has no image marker";
+		return -1;
 	}
 	return 0;
 }
@@ -379,14 +382,11 @@ static int bootinfo_7d(void)
 			printf(", \"hab_events\": %d", events);
 		else
 			printf(", \"hab_events\": null");
-		printf(", \"boot_image\": null, \"auth_result\": null");
 	} else {
 		if (events >= 0)
 			printf("  HAB events:             %d (run hab_status for details)\n", events);
 		else
 			printf("  HAB events:             unavailable (%s)\n", why);
-		puts("  Boot image:             unavailable (selection is not a boot result)");
-		puts("  Image authentication:   unavailable (HAB events alone do not prove success)");
 	}
 	return have_gpr && device && events >= 0 ? EX_OK : EX_UNAVAIL;
 }
@@ -424,7 +424,7 @@ int cmd_bootinfo(int argc, char **argv)
 	of = field_find("IMG_CNTN_SET1_OFFSET");
 	have_off = !of || field_read(of->name, &off) == 0;
 
-	if (!have_src || (!have_log && !soc->no_rom_log) || !have_sel ||
+	if (!have_src || !have_log || !have_sel ||
 	    !have_off || !have_sec)
 		rc = EX_UNAVAIL;
 
@@ -475,7 +475,7 @@ int cmd_bootinfo(int argc, char **argv)
 		       sel ? "fuses" : "boot pins", sel);
 	if (have_log) {
 		printf("  Boot image:             %s  (ROM log)\n",
-		       ri.secondary ? "SECONDARY - the ROM fell back" :
+		       ri.secondary ? "SECONDARY" :
 				      "primary");
 		if (ri.have_auth) {
 			s = hab_code_name('s', a_sts);

@@ -2,10 +2,10 @@ Boot information - i.MX7Dual
   SRC_SBMR1:              0x000028e4  (boot config)
   SRC_SBMR2:              0x00000011  (BMOD 00)
   Boot config source:     fuses (BT_FUSE_SEL=1)
-  ROM log:                unavailable (this Boot ROM keeps no ROM log)
+  Boot image:             primary  (ROM log)
+  Image authentication:   0x00cf1133  (HAB_FAILURE (0x33), HAB_INV_CSF (0x11), HAB_CTX_CSF (0xCF))
+  Boot image entry:       0x87800000
   Secure boot:            open (SEC_CONFIG[1]=0)
   Boot selection:         primary (SRC_GPR10 0x00000000; not a boot result)
   Boot device:            MMC3 (ROM software info; controller numbering)
   HAB events:             5 (run hab_status for details)
-  Boot image:             unavailable (selection is not a boot result)
-  Image authentication:   unavailable (HAB events alone do not prove success)

@@ -64,7 +64,7 @@ struct soc_desc {
 	const struct mem_region *regions;
 	size_t n_regions;
 
-	int no_rom_log; /* the Boot ROM keeps no event log (i.MX7) */
+	unsigned int rom_log_words; /* buffer capacity, default 128 */
 	uint32_t rom_log_ptr; /* ROM address holding the ROM log pointer */
 	uint32_t rom_log_lo; /* valid range for that pointer */
 	uint32_t rom_log_hi;
@@ -128,7 +128,8 @@ const char *hab_code_name(char kind, uint8_t v); /* kind: 's', 'r', 'c' */
 /* ROM log summary, shared by romlog and bootinfo */
 struct romlog_info {
 	uint32_t addr;
-	int secondary; /* event 0x51 seen */
+	int have_image;
+	int secondary; /* last primary/secondary marker */
 	int have_auth;
 	uint32_t auth; /* event 0xa0 first parameter */
 	int have_jump;

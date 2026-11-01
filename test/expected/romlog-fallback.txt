@@ -15,4 +15,4 @@ ROM log at 0x009112f8:
   91000000  read done                    ts=0x0000d9a1
   a0000000  image authentication result  result=0x00cf1133 ts=0x0000dab2
   c0000000  jump to boot image           addr=0x00920000 ts=0x0000edc2
-Boot image: SECONDARY (ROM fell back)
+Boot image: SECONDARY

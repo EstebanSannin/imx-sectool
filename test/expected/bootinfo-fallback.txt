@@ -2,7 +2,7 @@ Boot information - i.MX8M Plus
   SRC_SBMR1:              0x00002000  (boot config)
   SRC_SBMR2:              0x00040019  (BMOD 00)
   Boot config source:     fuses (BT_FUSE_SEL=1)
-  Boot image:             SECONDARY - the ROM fell back  (ROM log)
+  Boot image:             SECONDARY  (ROM log)
   Image authentication:   0x00cf1133  (HAB_FAILURE (0x33), HAB_INV_CSF (0x11), HAB_CTX_CSF (0xCF))
   Boot image entry:       0x00920000
   Secondary image:        secondary image at 4 MiB (IMG_CNTN_SET1_OFFSET=0)

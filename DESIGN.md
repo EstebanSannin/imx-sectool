@@ -226,7 +226,7 @@ Rules for B and C:
 
 | Family | fuse | hab/ahab status | bootinfo, romlog | reset-cause |
 |---|---|---|---|---|
-| i.MX6/7 | A | fuse + SNVS; events via C (found on i.MX7D) | SRC (B); no ROM log | SRC (B), cleared by U-Boot |
+| i.MX6/7 | A | fuse + SNVS; events via C (found on i.MX7D) | SRC (B); i.MX7D ROM log (C) | SRC (B), cleared by U-Boot |
 | i.MX8M | A | fuse + SNVS; events via C | SRC (B), ROM log (C) | SRC (B), not reliable on 8MP |
 | i.MX8QM/QXP | A (planned) | lifecycle through D; events through optional UIO | not implemented | — |
 | i.MX8ULP, i.MX9 | D (A for read) | D | ROM passover data (C) | SRC (B) |
@@ -304,7 +304,7 @@ and in dry-run mode shows the current, requested and resulting values.
 |---|---|---|
 | `ahab_status` | SECO lifecycle, firmware version and AHAB events | lifecycle and optional UIO events on i.MX8QM/QXP |
 | `bootinfo` | Boot mode registers, boot config source, primary or secondary image, authentication result, secondary image offset, secure boot. The boot device is not shown: on i.MX8M Plus only the bootloader can ask the ROM | done |
-| `romlog` | i.MX8M Boot ROM event log with timestamps | done |
+| `romlog` | i.MX7Dual and i.MX8M Plus Boot ROM event log with timestamps | done |
 | `reset-cause` | `SRC_SRSR` with U-Boot's names | done (not reliable on 8MP) |
 | `debug-status` | JTAG / secure debug mode (section 6.5) | done |
 | `fusemap` | Named fields with their meaning, one register, SRK hash, MAC addresses | done |
@@ -484,6 +484,10 @@ checks report "unavailable".
 
 ### i.MX7Dual
 
+A read-only investigation found the ROM boot log now used by `romlog`
+and `bootinfo`. See [the findings and fallback tests](docs/imx7-boot-log.md)
+and [the secondary-boot and rollback design note](docs/imx7-secondary-boot.md).
+
 Differences from the i.MX8M Plus:
 
 | Item | Value | Source |
@@ -499,18 +503,19 @@ Differences from the i.MX8M Plus:
 | OCRAM read windows | `0x904000` to `0x906000`; boot pointer limited to `0x900000` to `0x920000` | HAB store and ROM software info |
 | Boot device | software-info pointer at ROM `0x1e8` | U-Boot `ROM_SW_INFO_ADDR` and `get_boot_device()` |
 | Boot selection | `SRC_GPR10[30]`: primary or secondary | U-Boot `boot_mode_getprisec()` |
-| ROM log | none | |
+| ROM log | pointer at `0x1e0`; 64-word buffer | [read-only investigation](docs/imx7-boot-log.md) |
 
 The HAB store has the same records as on the i.MX8M Plus: `EVT_DEF` first,
 then the events. The ROM's `report_event()` reads its records from store 0.
+All five events on an open board matched U-Boot byte for byte on the same boot.
 
 Linux shows `ocram_clk` with an enable count of 0, but the clock gate
 (`CCGR17`, CCM + `0x4110`) reads `0x2`, so OCRAM is clocked and can be read.
 
 Broad Boot ROM reads from Linux hung this board and triggered watchdog
 resets. A single aligned 32-bit read at `0x1e8` succeeded, followed by
-20 matching reads without a reset. The tool allows only that word, not
-ROM scans. The memory mapping covers a page, but only that word is read.
+20 matching reads without a reset. The log pointer at `0x1e0` was also read successfully. The tool allows
+these two words, not ROM scans. Each read accesses only one 32-bit word.
 
 U-Boot clears `SRC_SRSR` after it reads it, so `reset-cause` usually reports
 "unknown". A nonzero value is decoded with a warning; it may not describe
@@ -530,8 +535,10 @@ numbering. The saved data can still be overwritten after boot.
 `bootinfo` also shows the primary/secondary selection from `SRC_GPR10`
 and the HAB event count. The selection can be changed by U-Boot and does
 not prove which image ran. No events does not prove authentication succeeded.
-The boot image and authentication result remain unavailable (null in JSON).
-A failure to read the device, selection or HAB events returns exit 3.
+The ROM log supplies the image selection, authentication result and entry
+address. A secondary marker does not prove automatic fallback or identify
+an eMMC boot partition. A failure to read the log, device, selection or
+HAB events returns exit 3.
 
 The HAB parser rejects malformed, truncated and oversized event records,
 and lists beyond its capacity. These produce unavailable results rather
@@ -575,8 +582,7 @@ A recipe `imx-sectool_git.bb` could live in the layer.
   hardware.
 - i.MX8M Nano and Quad, then i.MX9 (ELE), then i.MX6 and i.MX7Solo, then
   SCU fuse support and event access on other SCU parts (i.MX8/8X).
-- i.MX7D: compare `hab_status` with U-Boot on the same boot, and test a
-  closed board.
+- i.MX7D: test a closed board.
 - Optional kernel helper for the TF-A HAB call on i.MX8M and the SCU
   security calls, proposed upstream as a sysfs interface.
 - U-Boot could copy the HAB events and ROM log into the device tree

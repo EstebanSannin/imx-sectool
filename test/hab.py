@@ -73,8 +73,8 @@ with tempfile.TemporaryDirectory() as tmp:
         assert info['boot_selection'] == ('secondary' if secondary else 'primary')
         assert info['hab_events'] == 5
         assert info['boot_device'] == 'MMC' and info['boot_instance'] == 3
-        assert info['boot_image'] is None
-        assert info['auth_result'] is None
+        assert info['boot_image'] == 'primary'
+        assert info['auth_result'] == '0x00cf1133'
     pointer = directory / 'rom-sw-info.bin'
     for address in [0, 0x30390000, 0x009090c5, 0x0091fffc, 0xffffffff]:
         pointer.write_bytes(struct.pack('<I', address))

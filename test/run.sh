@@ -153,7 +153,7 @@ case_ mx7-debug-open         mx7-open   1 "$BIN" debug-status
 case_ mx7-debug-nodebug      mx7-closed 0 "$BIN" debug-status --expect no-debug
 case_ mx7-audit-open         mx7-open   1 "$BIN" audit
 case_ mx7-audit-closed       mx7-closed 5 "$BIN" audit
-case_ mx7-romlog             mx7-open   3 "$BIN" romlog
+case_ mx7-romlog             mx7-open   0 "$BIN" romlog
 case_ mx7-bootinfo           mx7-open   0 "$BIN" bootinfo
 case_ mx7-reset-cause        mx7-open   3 "$BIN" reset-cause
 

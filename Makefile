@@ -24,6 +24,7 @@ src/%.o: src/%.c src/sectool.h src/ahab.h
 check: $(PROG)
 	./test/run.sh ./$(PROG)
 	python3 -I test/hab.py ./$(PROG)
+	python3 -I test/romlog.py ./$(PROG)
 	$(CC) $(CFLAGS) -Isrc test/ahab.c src/cmd_ahab.c -o test/out/ahab-test
 	python3 -I test/ahab.py test/out/ahab-test ./$(PROG)
 	$(CC) $(CFLAGS) -Isrc test/scu_protocol.c -o test/out/scu-test
