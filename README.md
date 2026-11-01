@@ -9,7 +9,7 @@ It also shows information that Linux does not give today: the Boot ROM log,
 how the board booted, the JTAG / secure debug mode, and a security checklist.
 
 HAB commands need no device-tree change or extra kernel module. Fuses use
-nvmem; Boot ROM data uses fixed, read-only `/dev/mem` regions. On i.MX8QM,
+nvmem; Boot ROM data uses fixed, read-only `/dev/mem` regions. On i.MX8QM and i.MX8QXP,
 AHAB events need an [optional mailbox overlay and stock UIO driver](docs/ahab-uio.md).
 Without that setup, `ahab_status` still reports available lifecycle information.
 
@@ -61,7 +61,7 @@ make install PREFIX=/usr INSTALL_ALIASES=1      # also installs 'fuse' and 'hab_
 | i.MX8M Mini | Fuse commands, `fusemap`, `debug-status` and `audit`, tested on an open board. `hab_status`, `romlog` and `bootinfo` report "unavailable" until the Boot ROM memory regions are checked on hardware |
 | i.MX7Dual | All commands except `ahab_status`, tested on an open board. The i.MX7 Boot ROM keeps no ROM log, so `romlog` reports "unavailable" |
 | i.MX8QM | `ahab_status`: lifecycle and firmware version; events through optional UIO setup, tested on hardware |
-| i.MX8QXP | `ahab_status`: lifecycle and firmware version; events unavailable |
+| i.MX8QXP | `ahab_status`: lifecycle and firmware version; events through optional UIO setup, tested on hardware |
 
 On any other SoC the tool stops before reading anything.
 

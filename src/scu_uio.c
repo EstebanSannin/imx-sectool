@@ -166,8 +166,8 @@ int scu_open(struct scu_mu *mu, const char *device)
 	if (!soc->scu_mu)
 		return fail(mu, "no UIO mailbox verified on this SoC yet");
 	if (read_text("/sys/devices/soc0/soc_id", text, sizeof(text)) ||
-	    strcmp(text, "i.MX8QM"))
-		return fail(mu, "the detected hardware is not i.MX8QM");
+	    strcmp(text, soc->soc_id))
+		return fail(mu, "the detected hardware does not match the selected SoC");
 	if (find_device(mu, device, path) || check_device(mu, path) || lock_mu(mu))
 		goto error;
 	mu->fd = open(path, O_RDWR | O_SYNC | O_NOFOLLOW | O_CLOEXEC);

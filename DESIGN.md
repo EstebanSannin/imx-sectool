@@ -164,7 +164,8 @@ the HAB ROM vector table. They read the ROM's event area in OCRAM.
   firmware state.
 - SCU (i.MX8QM/QXP): lifecycle and firmware version through the SECO HSM
   device. Events use SCU RPC through an optional dedicated UIO mailbox on
-  i.MX8QM. Missing events are unavailable, never treated as a clean result.
+  i.MX8QM and i.MX8QXP. Missing events are unavailable, never treated as
+  a clean result.
   See [AHAB setup](docs/ahab-uio.md) and the
   [interface audit](docs/ahab-linux-interfaces.md).
 
@@ -206,7 +207,7 @@ are needed at run time.
 | B: registers | `/dev/mem` | SRC boot mode and reset registers, SNVS state | medium: a block with its clock off can hang the bus |
 | C: OCRAM data | `/dev/mem` on ROM and OCRAM | Boot ROM log, HAB events, i.MX9 ROM passover data | medium: the data can be old or overwritten |
 | D: enclave driver | `se_ctrl` device | SECO lifecycle and version; ELE fuses, events and info (planned) | low to medium: the firmware checks requests |
-| UIO: optional SCU mailbox | `/dev/uioN` with overlay | SECO lifecycle and AHAB events on i.MX8QM | dedicated mailbox and managed power required |
+| UIO: optional SCU mailbox | `/dev/uioN` with overlay | SECO lifecycle and AHAB events on i.MX8QM/QXP | dedicated mailbox and managed power required |
 | E: kernel helper (future) | optional module or upstream driver | TF-A HAB call on i.MX8M, SCU security calls | not in the first version |
 
 Rules for B and C:
@@ -227,7 +228,7 @@ Rules for B and C:
 |---|---|---|---|---|
 | i.MX6/7 | A | fuse + SNVS; events via C (found on i.MX7D) | SRC (B); no ROM log | SRC (B), cleared by U-Boot |
 | i.MX8M | A | fuse + SNVS; events via C | SRC (B), ROM log (C) | SRC (B), not reliable on 8MP |
-| i.MX8QM/QXP | A | lifecycle from fuses; events need E | needs E | — |
+| i.MX8QM/QXP | A (planned) | lifecycle through D; events through optional UIO | not implemented | — |
 | i.MX8ULP, i.MX9 | D (A for read) | D | ROM passover data (C) | SRC (B) |
 
 ### 5.4 When data is not available
@@ -301,7 +302,7 @@ and in dry-run mode shows the current, requested and resulting values.
 
 | Command | Shows | Status |
 |---|---|---|
-| `ahab_status` | SECO lifecycle, firmware version and AHAB events | lifecycle on i.MX8QM/QXP; events through optional UIO on i.MX8QM |
+| `ahab_status` | SECO lifecycle, firmware version and AHAB events | lifecycle and optional UIO events on i.MX8QM/QXP |
 | `bootinfo` | Boot mode registers, boot config source, primary or secondary image, authentication result, secondary image offset, secure boot. The boot device is not shown: on i.MX8M Plus only the bootloader can ask the ROM | done |
 | `romlog` | i.MX8M Boot ROM event log with timestamps | done |
 | `reset-cause` | `SRC_SRSR` with U-Boot's names | done (not reliable on 8MP) |

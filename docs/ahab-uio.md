@@ -1,8 +1,8 @@
 # AHAB status through an optional SCU mailbox
 
 `ahab_status` reads lifecycle and SECO firmware information through the
-existing `/dev/hsm0_ch0` driver. On i.MX8QM, it can also read AHAB events
-through a dedicated mailbox exposed by the stock UIO driver.
+existing `/dev/hsm0_ch0` driver. On i.MX8QM and i.MX8QXP, it can also read
+AHAB events through a dedicated mailbox exposed by the stock UIO driver.
 
 The mailbox setup is optional. Without it, lifecycle information remains
 available and the command reports events as unavailable. It never installs
@@ -19,7 +19,7 @@ Use `--uio` only to select a particular device.
 
 ## Requirements
 
-- i.MX8QM, with SCFW assigning MU2 to the Linux partition.
+- i.MX8QM or i.MX8QXP, with SCFW assigning MU2 to the Linux partition.
 - MU2 dedicated to this tool. It must not be used by a DSP, remote core,
   kernel mailbox client or another userspace application.
 - `CONFIG_UIO`, `CONFIG_UIO_PDRV_GENIRQ` and the i.MX SCU power-domain driver.
@@ -32,16 +32,22 @@ The stock UIO driver may be built in or supplied as a module by the OS.
 No custom module is needed. If the OS does not include this driver, the
 backend is unavailable; the overlay alone is not enough.
 
-UIO event access is enabled only for i.MX8QM. i.MX8QXP currently has
-lifecycle and firmware information only. Other commands on these two SoCs
-remain unavailable; this change does not add fuse programming support.
+Other commands on these two SoCs remain unavailable; this backend does
+not add fuse programming support.
 
 ## Install the overlay
 
-Build [imx8qm-mu2-uio.dtso](../overlays/imx8qm-mu2-uio.dtso):
+Build the overlay matching the SoC:
+
+| SoC | Overlay source |
+|---|---|
+| i.MX8QM | [imx8qm-mu2-uio.dtso](../overlays/imx8qm-mu2-uio.dtso) |
+| i.MX8QXP | [imx8qxp-mu2-uio.dtso](../overlays/imx8qxp-mu2-uio.dtso) |
+
+For i.MX8QXP:
 
 ```sh
-dtc -@ -I dts -O dtb -o imx8qm-mu2-uio.dtbo overlays/imx8qm-mu2-uio.dtso
+dtc -@ -I dts -O dtb -o imx8qxp-mu2-uio.dtbo overlays/imx8qxp-mu2-uio.dtso
 ```
 
 The base DT needs the `lsio_mu2` and `pd` symbols. The overlay enables MU2
@@ -129,11 +135,13 @@ The end-of-list convention still needs validation on other SCFW versions.
 
 ## Validation and removal
 
-Validated on i.MX8QM with Linux `6.6.142-rt75-7.7.0-devel` and SECO version
-`0x00030085`: lifecycle, firmware version and event enumeration. Twenty
-repeated queries passed alongside thermal reads. Missing UIO and lock
+Validated on i.MX8QM with Linux `6.6.142-rt75-7.7.0-devel` and i.MX8QXP
+with Linux `6.6.142-7.7.0`, both with SECO version `0x00030085`.
+Lifecycle, firmware version and event enumeration worked on both. Twenty
+repeated queries on each SoC passed alongside thermal reads. Missing UIO and lock
 contention retained lifecycle information and returned exit 3. MU2 powered
-down after closing. Host tests cover partial lists, firmware errors,
+down after closing. Selecting i.MX8QM on the QXP board was rejected
+before mailbox access. Host tests cover partial lists, firmware errors,
 malformed responses, timeouts and index limits. An empty event log and an
 OEM-closed device have not been tested on hardware.
 

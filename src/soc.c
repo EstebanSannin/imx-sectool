@@ -376,6 +376,7 @@ static const struct soc_desc imx8qxp = {
 	.name = "i.MX8QuadXPlus",
 	.soc_id = "i.MX8QXP",
 	.seco = 1,
+	.scu_mu = 0x5d1d0000,
 };
 
 static const struct soc_desc *const socs[] = {

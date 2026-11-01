@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: MIT
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "fsl,imx8qxp";
+};
+
+&lsio_mu2 {
+	compatible = "generic-uio";
+	linux,uio-name = "scu-mu2";
+	power-domains = <&pd 215>; /* IMX_SC_R_MU_2A */
+	status = "okay";
+};
