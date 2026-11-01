@@ -157,9 +157,7 @@ static size_t rec_len(const uint8_t *r)
 	return ((size_t)r[1] << 8) | r[2];
 }
 
-/* Collect the event records. Returns the count, or -1 if the area does not
- * hold a valid EVT_DEF record (overwritten, or a different ROM layout).
- */
+/* Return the event count, or -1 when the store cannot be read completely. */
 static int read_events(struct hab_event *ev, int max, const char **why)
 {
 	static uint8_t area[0x1000];
@@ -190,18 +188,23 @@ static int read_events(struct hab_event *ev, int max, const char **why)
 	 * event record, then walk the contiguous list (aligned per SoC).
 	 */
 	for (off = (def_len + 3) & ~(size_t)3; off + 4 <= size; off += 4) {
-		l = rec_len(&area[off]);
-		if (area[off] == HAB_TAG_EVT && area[off + 3] == ver &&
-		    l >= 8 && l <= MAX_EVENT_BYTES)
+		if (area[off] == HAB_TAG_EVT)
 			break;
 	}
 
-	while (off + 4 <= size && n < max) {
+	while (off + 4 <= size) {
 		r = &area[off];
 		l = rec_len(r);
-		if (r[0] != HAB_TAG_EVT || r[3] != ver || l < 8 ||
-		    l > MAX_EVENT_BYTES || off + l > size)
+		if (r[0] != HAB_TAG_EVT)
 			break;
+		if (r[3] != ver || l < 8 || off + l > size) {
+			*why = "invalid or truncated HAB event record";
+			return -1;
+		}
+		if (l > MAX_EVENT_BYTES || n == max) {
+			*why = "HAB event log exceeds the supported size";
+			return -1;
+		}
 		memcpy(ev[n].data, r, l);
 		ev[n].len = l;
 		n++;

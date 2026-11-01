@@ -247,11 +247,12 @@ static const struct soc_desc imx8mm = {
 
 /* ---- i.MX7Dual ------------------------------------------------------------ */
 
-/* Only the OCRAM page holding HAB store 0. Reading the Boot ROM from Linux
- * can hang this SoC, so no ROM region is listed.
+/* Read only the ROM software-info pointer. Broad ROM reads can hang i.MX7.
  */
 static const struct mem_region imx7d_regions[] = {
 	{ "ocram-hab", 0x00904000, 0x2000 },
+	{ "rom-sw-info", 0x000001e8, 4 },
+	{ "ocram-boot", 0x00900000, 0x20000 },
 	{ "src", 0x30390000, 0x100 },
 	{ "snvs-hp", 0x30370000, 0x100 },
 };

@@ -123,6 +123,11 @@ def scenario_7d(outdir, name, closed):
         store = store[:first_event] + [0] * (len(store) - first_event)
     put(ocram, 0x9c0, store)
     open(os.path.join(d, "ocram-hab.bin"), "wb").write(ocram)
+    boot = bytearray(0x20000)
+    put(boot, 0x90c4, [0x00020200])  # ROM reports MMC instance 2 (MMC3)
+    open(os.path.join(d, "ocram-boot.bin"), "wb").write(boot)
+    open(os.path.join(d, "rom-sw-info.bin"), "wb").write(words_to_bytes([0x009090c4]))
+
 
     src = bytearray(0x100)
     put(src, 0x58, [0x000028e4, 0])

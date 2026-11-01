@@ -82,6 +82,8 @@ static volatile uint32_t *map_region(int idx)
 	const struct mem_region *r = &soc->regions[idx];
 	void *p;
 	int fd, err;
+	long page_size;
+	size_t page_off;
 
 	if (maps[idx])
 		return maps[idx];
@@ -94,7 +96,15 @@ static volatile uint32_t *map_region(int idx)
 					   "");
 		return NULL;
 	}
-	p = mmap(NULL, r->size, PROT_READ, MAP_SHARED, fd, (off_t)r->base);
+	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size <= 0) {
+		close(fd);
+		snprintf(errbuf, sizeof(errbuf), "cannot determine page size");
+		return NULL;
+	}
+	page_off = r->base % (size_t)page_size;
+	p = mmap(NULL, r->size + page_off, PROT_READ, MAP_SHARED, fd,
+		 (off_t)(r->base - page_off));
 	err = errno;
 	close(fd); /* the mapping stays valid */
 	if (p == MAP_FAILED) {
@@ -103,7 +113,7 @@ static volatile uint32_t *map_region(int idx)
 			 r->name, r->base, strerror(err));
 		return NULL;
 	}
-	maps[idx] = (volatile uint32_t *)p;
+	maps[idx] = (volatile uint32_t *)((char *)p + page_off);
 	return maps[idx];
 }
 

@@ -228,6 +228,10 @@ int cmd_reset_cause(int argc, char **argv)
 		       srsr & ~known);
 	printf("  (SRC_SRSR 0x%08x)\n", srsr);
 	if (!soc->srsr_reliable) {
+		if (!strcmp(soc->soc_id, "i.MX7D")) {
+			puts("note: U-Boot normally clears SRC_SRSR on i.MX7; this value may not describe the boot reset.");
+			return EX_WARN;
+		}
 		printf("note: on %s, a power-on and a reboot leave the same SRC_SRSR value by the\n"
 		       "      time Linux runs, so this cannot tell them apart.\n",
 		       soc->name);
@@ -291,6 +295,101 @@ int romlog_summary(struct romlog_info *ri, const char **why)
 
 #define SRC_SBMR1 0x58
 #define SRC_SBMR2 0x70
+
+/* Follow ROM_SW_INFO_ADDR, as U-Boot get_boot_device() does on i.MX7. */
+static const char *boot_device_7d(unsigned int *instance, const char **why)
+{
+	static const char *const names[] = {
+		[1] = "SD", [2] = "MMC", [3] = "NAND", [4] = "QSPI",
+		[5] = "WEIM NOR", [6] = "SPI NOR", [15] = "USB",
+	};
+	uint32_t ptr, info;
+	unsigned int type, port;
+
+	if (mmio_read32(0x000001e8, &ptr)) {
+		*why = mmio_error();
+		return NULL;
+	}
+	if ((ptr & 3) || ptr < 0x00900000 || ptr > 0x00920000 - 32) {
+		*why = "ROM software-info pointer is outside OCRAM or unaligned";
+		return NULL;
+	}
+	if (mmio_read32(ptr, &info)) {
+		*why = mmio_error();
+		return NULL;
+	}
+	type = (info >> 16) & 0xff;
+	port = (info >> 8) & 0xff;
+	if (type >= ARRAY_SIZE(names) || !names[type]) {
+		*why = "unknown device in ROM software info";
+		return NULL;
+	}
+	if ((type == 1 || type == 2) && port >= 3) {
+		*why = "invalid SD/MMC instance in ROM software info";
+		return NULL;
+	}
+	*instance = type == 1 || type == 2 ? port + 1 : 0;
+	return names[type];
+}
+
+/* U-Boot boot_mode_getprisec() reads this selection, not a boot result. */
+static int bootinfo_7d(void)
+{
+	uint32_t gpr10;
+	const char *why = NULL;
+	const char *device;
+	unsigned int instance = 0;
+	int have_gpr, events;
+
+	have_gpr = !mmio_read32(soc->src_base + 0x98, &gpr10);
+	if (opt_json) {
+		if (have_gpr)
+			printf(", \"src_gpr10\": \"0x%08x\", \"boot_selection\": \"%s\"",
+			       gpr10, gpr10 & (1u << 30) ? "secondary" : "primary");
+		else
+			printf(", \"boot_selection\": null");
+	} else if (have_gpr) {
+		printf("  Boot selection:         %s (SRC_GPR10 0x%08x; not a boot result)\n",
+		       gpr10 & (1u << 30) ? "secondary" : "primary", gpr10);
+	} else {
+		printf("  Boot selection:         unavailable (%s)\n", mmio_error());
+	}
+
+	device = boot_device_7d(&instance, &why);
+	if (opt_json) {
+		if (device) {
+			printf(", \"boot_device\": \"%s\"", device);
+			if (instance)
+				printf(", \"boot_instance\": %u", instance);
+		} else {
+			printf(", \"boot_device\": null");
+		}
+	} else if (device) {
+		printf("  Boot device:            %s", device);
+		if (instance)
+			printf("%u", instance);
+		puts(" (ROM software info; controller numbering)");
+	} else {
+		printf("  Boot device:            unavailable (%s)\n", why);
+	}
+
+	events = hab_event_count(&why);
+	if (opt_json) {
+		if (events >= 0)
+			printf(", \"hab_events\": %d", events);
+		else
+			printf(", \"hab_events\": null");
+		printf(", \"boot_image\": null, \"auth_result\": null");
+	} else {
+		if (events >= 0)
+			printf("  HAB events:             %d (run hab_status for details)\n", events);
+		else
+			printf("  HAB events:             unavailable (%s)\n", why);
+		puts("  Boot image:             unavailable (selection is not a boot result)");
+		puts("  Image authentication:   unavailable (HAB events alone do not prove success)");
+	}
+	return have_gpr && device && events >= 0 ? EX_OK : EX_UNAVAIL;
+}
 
 /*
  * What can be stated about this boot without the ROM API (which only the
@@ -356,6 +455,8 @@ int cmd_bootinfo(int argc, char **argv)
 		if (have_sec)
 			printf(", \"secure_boot\": \"%s\"",
 			       sec ? "closed" : "open");
+		if (!strcmp(soc->soc_id, "i.MX7D") && bootinfo_7d())
+			rc = EX_UNAVAIL;
 		printf("}\n");
 		return rc;
 	}
@@ -396,5 +497,7 @@ int cmd_bootinfo(int argc, char **argv)
 	if (have_sec)
 		printf("  Secure boot:            %s (SEC_CONFIG[1]=%u)\n",
 		       sec ? "closed" : "open", sec);
+	if (!strcmp(soc->soc_id, "i.MX7D") && bootinfo_7d())
+		rc = EX_UNAVAIL;
 	return rc;
 }

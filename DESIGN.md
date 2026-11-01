@@ -496,7 +496,9 @@ Differences from the i.MX8M Plus:
 | `SPEED_GRADING` | bank 1 word 0 bits 9:8: 800, 500, 1000, 1200 MHz | U-Boot |
 | HAB ROM vector table | `0x100` | U-Boot `hab.h` |
 | HAB event area | store 0, `0x009049c0` to `0x0090553f`; event records 4-byte aligned | ROM store table at `0x11598`, found on hardware |
-| OCRAM read window | `0x904000` to `0x906000` | page that holds store 0 |
+| OCRAM read windows | `0x904000` to `0x906000`; boot pointer limited to `0x900000` to `0x920000` | HAB store and ROM software info |
+| Boot device | software-info pointer at ROM `0x1e8` | U-Boot `ROM_SW_INFO_ADDR` and `get_boot_device()` |
+| Boot selection | `SRC_GPR10[30]`: primary or secondary | U-Boot `boot_mode_getprisec()` |
 | ROM log | none | |
 
 The HAB store has the same records as on the i.MX8M Plus: `EVT_DEF` first,
@@ -505,12 +507,37 @@ then the events. The ROM's `report_event()` reads its records from store 0.
 Linux shows `ocram_clk` with an enable count of 0, but the clock gate
 (`CCGR17`, CCM + `0x4110`) reads `0x2`, so OCRAM is clocked and can be read.
 
-Reading the Boot ROM from Linux can hang this SoC (the watchdog then resets
-it), at different offsets on each try. The tool does not read the ROM on
-the i.MX7.
+Broad Boot ROM reads from Linux hung this board and triggered watchdog
+resets. A single aligned 32-bit read at `0x1e8` succeeded, followed by
+20 matching reads without a reset. The tool allows only that word, not
+ROM scans. The memory mapping covers a page, but only that word is read.
 
 U-Boot clears `SRC_SRSR` after it reads it, so `reset-cause` usually reports
-"unknown".
+"unknown". A nonzero value is decoded with a warning; it may not describe
+the reset that started this boot.
+
+`bootinfo` follows the ROM software-info pointer, as U-Boot does. It checks
+alignment and that the 32-byte structure fits inside main OCRAM before
+reading its boot-device word. Unknown device codes and invalid SD/MMC
+instances report unavailable. No fixed software-info address is assumed.
+
+On the tested i.MX7Dual board (NXP silicon revision 1.3), the ROM pointer
+was `0x009090c4` and the device was MMC3. The tool follows the pointer
+without checking the chip revision.
+SD/MMC instances use controller numbering, not Linux `/dev/mmcblkN`
+numbering. The saved data can still be overwritten after boot.
+
+`bootinfo` also shows the primary/secondary selection from `SRC_GPR10`
+and the HAB event count. The selection can be changed by U-Boot and does
+not prove which image ran. No events does not prove authentication succeeded.
+The boot image and authentication result remain unavailable (null in JSON).
+A failure to read the device, selection or HAB events returns exit 3.
+
+The HAB parser rejects malformed, truncated and oversized event records,
+and lists beyond its capacity. These produce unavailable results rather
+than a clean `hab_status` or audit PASS. A valid header alone cannot prove
+that OCRAM has not been overwritten; the empty-store and closed-device
+paths still need hardware validation.
 
 Checked on an open Colibri iMX7D: the fuse values, the SNVS state and the
 five HAB events (`HAB_INV_CSF`, then four `HAB_INV_ASSERTION`) that an open
