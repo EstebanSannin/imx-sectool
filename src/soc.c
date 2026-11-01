@@ -365,7 +365,22 @@ static const struct soc_desc imx7d = {
 	.secure_jtag = 1,
 };
 
-static const struct soc_desc *const socs[] = { &imx8mp, &imx8mm, &imx7d };
+static const struct soc_desc imx8qm = {
+	.name = "i.MX8QuadMax",
+	.soc_id = "i.MX8QM",
+	.seco = 1,
+	.scu_mu = 0x5d1d0000,
+};
+
+static const struct soc_desc imx8qxp = {
+	.name = "i.MX8QuadXPlus",
+	.soc_id = "i.MX8QXP",
+	.seco = 1,
+};
+
+static const struct soc_desc *const socs[] = {
+	&imx8mp, &imx8mm, &imx7d, &imx8qm, &imx8qxp,
+};
 
 const struct soc_desc *soc;
 
@@ -464,7 +479,7 @@ int soc_detect(const char *force_id)
 		}
 	}
 	fprintf(stderr,
-		"error: SoC '%s' is not supported yet (supported: i.MX8MP, i.MX8MM, i.MX7D)\n",
+		"error: SoC '%s' is not supported yet (supported: i.MX8MP, i.MX8MM, i.MX7D, i.MX8QM, i.MX8QXP)\n",
 		id);
 	return EX_UNAVAIL;
 }

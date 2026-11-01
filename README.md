@@ -8,9 +8,10 @@ or from a script, without a serial console.
 It also shows information that Linux does not give today: the Boot ROM log,
 how the board booted, the JTAG / secure debug mode, and a security checklist.
 
-No device-tree change and no kernel module are needed. Fuses are read and
-written through the kernel nvmem driver. The Boot ROM data is read from a few
-fixed, read-only `/dev/mem` regions.
+HAB commands need no device-tree change or extra kernel module. Fuses use
+nvmem; Boot ROM data uses fixed, read-only `/dev/mem` regions. On i.MX8QM,
+AHAB events need an [optional mailbox overlay and stock UIO driver](docs/ahab-uio.md).
+Without that setup, `ahab_status` still reports available lifecycle information.
 
 > **Warning:** fuses are one-time programmable. A wrong `fuse prog` can break
 > a device for good. Use at your own risk.
@@ -23,6 +24,7 @@ All commands need root.
 imx-sectool fuse read 1 3          # same as U-Boot 'fuse read'
 imx-sectool fuse read JTAG_SMODE   # fuse fields also work by name
 imx-sectool hab_status             # same output as U-Boot 'hab_status'
+imx-sectool ahab_status            # SECO lifecycle; events with optional UIO setup
 imx-sectool romlog                 # Boot ROM event log
 imx-sectool bootinfo               # boot mode, primary or secondary image
 imx-sectool fusemap                # security fuses with their meaning
@@ -55,9 +57,11 @@ make install PREFIX=/usr INSTALL_ALIASES=1      # also installs 'fuse' and 'hab_
 
 | SoC | Status |
 |---|---|
-| i.MX8M Plus | All commands, tested on hardware |
+| i.MX8M Plus | All commands except `ahab_status`, tested on hardware |
 | i.MX8M Mini | Fuse commands, `fusemap`, `debug-status` and `audit`, tested on an open board. `hab_status`, `romlog` and `bootinfo` report "unavailable" until the Boot ROM memory regions are checked on hardware |
-| i.MX7Dual | All commands, tested on an open board. The i.MX7 Boot ROM keeps no ROM log, so `romlog` reports "unavailable" |
+| i.MX7Dual | All commands except `ahab_status`, tested on an open board. The i.MX7 Boot ROM keeps no ROM log, so `romlog` reports "unavailable" |
+| i.MX8QM | `ahab_status`: lifecycle and firmware version; events through optional UIO setup, tested on hardware |
+| i.MX8QXP | `ahab_status`: lifecycle and firmware version; events unavailable |
 
 On any other SoC the tool stops before reading anything.
 
@@ -69,7 +73,7 @@ Planned:
 | i.MX93, i.MX91, i.MX95 | AHAB (EdgeLock Enclave) | Adds `ahab_status` |
 | i.MX8ULP | AHAB (EdgeLock Enclave) | |
 | i.MX6, i.MX6UL/ULL, i.MX7Solo | HABv4 | HAB event area to be found on hardware |
-| i.MX8QM, i.MX8QXP, i.MX8DXL | AHAB (SCU) | Fuses only at first; AHAB events need a kernel helper |
+| i.MX8DXL | AHAB (SCU) | Driver and mailbox support to be checked |
 
 See [DESIGN.md](DESIGN.md) for the details.
 

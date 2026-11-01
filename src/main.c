@@ -9,7 +9,7 @@
  *
  * Data sources, in order of preference: nvmem for fuses; read-only, whitelisted
  * /dev/mem mappings for ROM, OCRAM, SRC and SNVS. No device-tree change and no
- * kernel module are required.
+ * kernel module are required for HAB. AHAB events use optional UIO setup.
  *
  * Environment (mainly for host testing):
  *   IMX_SECTOOL_SOC       SoC id instead of /sys/devices/soc0/soc_id
@@ -41,6 +41,8 @@ static const struct command commands[] = {
 	  "U-Boot 'fuse' command (read, readv, readm, cmp, prog)" },
 	{ "hab_status", cmd_hab_status,
 	  "U-Boot 'hab_status': secure boot state and HAB events" },
+	{ "ahab_status", cmd_ahab_status,
+	  "SECO lifecycle and AHAB events [--uio /dev/uioN]" },
 	{ "romlog", cmd_romlog, "decode the i.MX8M Boot ROM event log" },
 	{ "reset-cause", cmd_reset_cause,
 	  "reset cause from the System Reset Controller" },
@@ -68,6 +70,16 @@ static void usage(FILE *f)
 		"\nAlso installed as 'fuse' and 'hab_status', it behaves like those U-Boot commands.\n");
 }
 
+static int run_command(const struct command *cmd, int argc, char **argv)
+{
+	if (soc->seco && cmd->fn != cmd_ahab_status) {
+		fprintf(stderr, "error: only ahab_status is supported on %s yet\n",
+			soc->name);
+		return EX_UNAVAIL;
+	}
+	return cmd->fn(argc, argv);
+}
+
 static const struct command *find_command(const char *name)
 {
 	size_t i;
@@ -92,7 +104,7 @@ int main(int argc, char **argv)
 		rc = soc_detect(force_soc);
 		if (rc != EX_OK)
 			return rc;
-		return cmd->fn(argc, argv);
+		return run_command(cmd, argc, argv);
 	}
 
 	for (ai = 1; ai < argc; ai++) {
@@ -133,5 +145,5 @@ int main(int argc, char **argv)
 	rc = soc_detect(force_soc);
 	if (rc != EX_OK)
 		return rc;
-	return cmd->fn(argc - ai, &argv[ai]);
+	return run_command(cmd, argc - ai, &argv[ai]);
 }

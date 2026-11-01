@@ -47,13 +47,13 @@ Why this is useful:
 Goals:
 
 - C11, libc only, one binary, easy to cross-compile and package in Yocto.
-- Same `fuse`, `hab_status` and `ahab_status` behaviour as U-Boot,
-  including the Toradex patches (section 9).
+- Same `fuse` and `hab_status` behaviour as U-Boot, including the Toradex
+  patches (section 9). `ahab_status` also reports partial availability.
 - One binary with several names: called as `fuse` or `hab_status`, it works
   like the U-Boot command.
-- Works on devices as they are: no feature may need a device-tree change, a
-  kernel module or a kernel patch. When data is not reachable, the command
-  says `unavailable` and why (section 5.4).
+- Works with existing OS interfaces where possible. AHAB events may use an
+  optional mailbox overlay and stock UIO driver. Missing setup affects only
+  that feature: the command says `unavailable` and why (section 5.4).
 - Safe defaults for anything that cannot be undone (section 7).
 - `--json` for every command that is not a U-Boot clone.
 - All i.MX families over time, starting with the i.MX8M Plus.
@@ -64,8 +64,8 @@ Non-goals:
 - Key management and HSM integration.
 - Crypto services of the EdgeLock Enclave (NXP's `imx-secure-enclave` does
   that). Only boot, fuses and lifecycle are in scope.
-- A kernel module or a device-tree overlay in the first version. They may
-  come later as optional extras (section 11), never as a requirement.
+- A custom kernel module as a requirement for the tool. The optional AHAB
+  mailbox backend uses the existing UIO driver.
 - i.MX RT microcontrollers.
 
 ## 3. Existing tools
@@ -162,8 +162,11 @@ the HAB ROM vector table. They read the ROM's event area in OCRAM.
 - ELE (i.MX8ULP, i.MX9): lifecycle from a register or a fuse, events with
   `ELE_GET_EVENTS 0xA2`. `ELE_GET_INFO` gives lifecycle, UID, SRK hash and
   firmware state.
-- SCU (i.MX8QM/QXP): SCU firmware calls. Linux does not export them to
-  userspace.
+- SCU (i.MX8QM/QXP): lifecycle and firmware version through the SECO HSM
+  device. Events use SCU RPC through an optional dedicated UIO mailbox on
+  i.MX8QM. Missing events are unavailable, never treated as a clean result.
+  See [AHAB setup](docs/ahab-uio.md) and the
+  [interface audit](docs/ahab-linux-interfaces.md).
 
 ## 5. Architecture
 
@@ -202,7 +205,8 @@ are needed at run time.
 | A: nvmem | `/sys/bus/nvmem/devices/*/nvmem` | all fuse reads and writes | low: the driver handles locking and clocks |
 | B: registers | `/dev/mem` | SRC boot mode and reset registers, SNVS state | medium: a block with its clock off can hang the bus |
 | C: OCRAM data | `/dev/mem` on ROM and OCRAM | Boot ROM log, HAB events, i.MX9 ROM passover data | medium: the data can be old or overwritten |
-| D: ELE | `se_ctrl` device | ELE fuses, events, info, lifecycle | low to medium: the firmware checks requests |
+| D: enclave driver | `se_ctrl` device | SECO lifecycle and version; ELE fuses, events and info (planned) | low to medium: the firmware checks requests |
+| UIO: optional SCU mailbox | `/dev/uioN` with overlay | SECO lifecycle and AHAB events on i.MX8QM | dedicated mailbox and managed power required |
 | E: kernel helper (future) | optional module or upstream driver | TF-A HAB call on i.MX8M, SCU security calls | not in the first version |
 
 Rules for B and C:
@@ -297,6 +301,7 @@ and in dry-run mode shows the current, requested and resulting values.
 
 | Command | Shows | Status |
 |---|---|---|
+| `ahab_status` | SECO lifecycle, firmware version and AHAB events | lifecycle on i.MX8QM/QXP; events through optional UIO on i.MX8QM |
 | `bootinfo` | Boot mode registers, boot config source, primary or secondary image, authentication result, secondary image offset, secure boot. The boot device is not shown: on i.MX8M Plus only the bootloader can ask the ROM | done |
 | `romlog` | i.MX8M Boot ROM event log with timestamps | done |
 | `reset-cause` | `SRC_SRSR` with U-Boot's names | done (not reliable on 8MP) |
@@ -541,7 +546,7 @@ A recipe `imx-sectool_git.bb` could live in the layer.
 - i.MX8M Mini: check the Boot ROM regions and the HAB event area on
   hardware.
 - i.MX8M Nano and Quad, then i.MX9 (ELE), then i.MX6 and i.MX7Solo, then
-  SCU parts (i.MX8/8X).
+  SCU fuse support and event access on other SCU parts (i.MX8/8X).
 - i.MX7D: compare `hab_status` with U-Boot on the same boot, and test a
   closed board.
 - Optional kernel helper for the TF-A HAB call on i.MX8M and the SCU

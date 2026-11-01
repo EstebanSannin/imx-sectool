@@ -82,6 +82,8 @@ struct soc_desc {
 	const struct fuse_reg *regs;
 	size_t n_regs;
 	unsigned int mac_bank; /* MAC fuses: words 0-2 of this bank */
+	int seco; /* SCU/SECO platform; only ahab_status is supported */
+	uint32_t scu_mu; /* optional UIO mailbox base */
 	int secure_jtag; /* JTAG_SMODE = Secure JTAG usable on this SoC */
 };
 
@@ -138,6 +140,7 @@ int romlog_summary(struct romlog_info *ri, const char **why);
 
 int cmd_fuse(int argc, char **argv);
 int cmd_hab_status(int argc, char **argv);
+int cmd_ahab_status(int argc, char **argv);
 int cmd_romlog(int argc, char **argv);
 int cmd_reset_cause(int argc, char **argv);
 int cmd_debug_status(int argc, char **argv);
