@@ -72,6 +72,7 @@ struct soc_desc {
 	uint32_t hab_persist_size; /* bytes searched for event records */
 	uint32_t hab_evt_align; /* event record alignment, 8 if 0 */
 	uint32_t src_base;
+	uint32_t src_sbmr1, src_sbmr2, src_srsr;
 	uint32_t snvs_base;
 	int srsr_reliable; /* SRSR still tells warm from cold in Linux */
 
@@ -81,7 +82,7 @@ struct soc_desc {
 	const char *srk_lock; /* name of the SRK hash lock field */
 	const struct fuse_reg *regs;
 	size_t n_regs;
-	unsigned int mac_bank; /* MAC fuses: words 0-2 of this bank */
+	unsigned int mac_bank, mac_word, mac_count;
 	int seco; /* SCU/SECO platform; only ahab_status is supported */
 	uint32_t scu_mu; /* optional UIO mailbox base */
 	int secure_jtag; /* JTAG_SMODE = Secure JTAG usable on this SoC */
@@ -119,6 +120,7 @@ const char *field_meaning(const struct fuse_field *f, uint32_t v, char *buf,
 			  size_t n);
 int mac_read(int index, uint8_t mac[6]);
 int field_read(const char *name, uint32_t *val);
+const char *secure_boot_field(void);
 int fuse_word(unsigned int bank, unsigned int word, uint32_t *val); /* same codes */
 
 /* HAB event count from the ROM's persistent area; -1 with *why on failure */

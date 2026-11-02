@@ -339,7 +339,8 @@ the fuse values. Everything comes from fuses, so no `/dev/mem` is needed.
 
 The rules follow `create_fuse_cmds.sh` in the layer.
 
-i.MX6/7/8M (SJC, `JTAG_SMODE` in bank 1 word 3 bits 23:22):
+i.MX6/7/8M use SJC. `JTAG_SMODE` is in bits 23:22 of bank 0 word 6
+on i.MX6DL, and bank 1 word 3 on i.MX7/8M:
 
 | Fuses | Mode |
 |---|---|
@@ -550,6 +551,20 @@ Checked on an open Colibri iMX7D: the fuse values, the SNVS state and the
 five HAB events (`HAB_INV_CSF`, then four `HAB_INV_ASSERTION`) that an open
 board shows with an unsigned image.
 
+### i.MX6DualLite
+
+Uses 8-word fuse banks, a different secure-boot bit, and different SRC
+register offsets. The descriptor supplies these positions; JTAG response
+and MAC reads use the i.MX6 locations.
+
+The HAB store and format-0 ROM log were captured before Linux. Both are
+zeroed by the time stock Torizon 7.7 reaches its shell. The readers reject
+missing records; `bootinfo` still reports boot configuration but does not
+claim an actual boot image or eMMC partition. SRSR is cleared by U-Boot.
+
+See [i.MX6DL discovery](docs/phase0-imx6dl.md) for the addresses, tests and
+remaining limits. No fuses were programmed during validation.
+
 ## 9. meta-toradex-security
 
 | In the layer | In imx-sectool |
@@ -580,7 +595,7 @@ A recipe `imx-sectool_git.bb` could live in the layer.
 
 - i.MX8M Mini: check the Boot ROM regions and the HAB event area on
   hardware.
-- i.MX8M Nano and Quad, then i.MX9 (ELE), then i.MX6 and i.MX7Solo, then
+- i.MX8M Nano and Quad, then i.MX9 (ELE), then other i.MX6 variants and i.MX7Solo, then
   SCU fuse support and event access on other SCU parts (i.MX8/8X).
 - i.MX7D: test a closed board.
 - Optional kernel helper for the TF-A HAB call on i.MX8M and the SCU
@@ -598,10 +613,10 @@ A recipe `imx-sectool_git.bb` could live in the layer.
    features are `unavailable` by design.
 2. Data survival: TF-A and some Linux drivers use OCRAM. Check per SoC and
    boot flow.
-3. HAB event area on i.MX6/7: address not documented, must be found on
-   hardware.
-4. i.MX6 nvmem offsets: Linux reads include the shadow register holes but
-   writes use the fuse index. The SoC table must handle both.
+3. HAB data survival on i.MX6DL: verify a boot flow that preserves the
+   records through Linux startup.
+4. i.MX6DL fuse programming: reads match U-Boot; hardware writes remain
+   untested.
 5. ELE from Linux: check that ELE accepts `WRITE_FUSE` and lifecycle
    commands from the Linux mailbox.
 6. crucible fusemaps: convert the YAML to C tables on the host and commit

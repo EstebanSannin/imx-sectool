@@ -57,6 +57,7 @@ make install PREFIX=/usr INSTALL_ALIASES=1      # also installs 'fuse' and 'hab_
 
 | SoC | Status |
 |---|---|
+| i.MX6DualLite | Fuses, debug checks and boot configuration tested on hardware. On stock Torizon 7.7, Linux overwrites the HAB and ROM logs; U-Boot clears the reset cause. See the [i.MX6DL notes](docs/phase0-imx6dl.md) |
 | i.MX8M Plus | All commands except `ahab_status`, tested on hardware |
 | i.MX8M Mini | Fuse commands, `fusemap`, `debug-status` and `audit`, tested on an open board. `hab_status`, `romlog` and `bootinfo` report "unavailable" until the Boot ROM memory regions are checked on hardware |
 | i.MX7Dual | Fuses, HAB events and debug checks tested on an open board. `bootinfo` reads the boot device through the ROM pointer and shows the primary/secondary selection. The ROM log reports the image selection, authentication result and entry address, but not the eMMC boot partition; U-Boot usually clears the reset cause |
@@ -72,7 +73,7 @@ Planned:
 | i.MX8M Nano, Quad | HABv4 | Same family as the i.MX8M Plus; next to come |
 | i.MX93, i.MX91, i.MX95 | AHAB (EdgeLock Enclave) | Adds `ahab_status` |
 | i.MX8ULP | AHAB (EdgeLock Enclave) | |
-| i.MX6, i.MX6UL/ULL, i.MX7Solo | HABv4 | HAB event area to be found on hardware |
+| Other i.MX6 variants, i.MX6UL/ULL, i.MX7Solo | HABv4 | HAB event area to be found on hardware |
 | i.MX8DXL | AHAB (SCU) | Driver and mailbox support to be checked |
 
 See [DESIGN.md](DESIGN.md) for the details.
@@ -81,7 +82,7 @@ same-partition fallback and a proposed bootloader rollback mechanism.
 
 ## Credits
 
-The i.MX8M Plus, i.MX8M Mini and i.MX7Dual fuse positions come from the
+The i.MX6DualLite, i.MX7Dual, i.MX8M Mini and i.MX8M Plus fuse positions come from the
 fusemaps of
 [usbarmory/crucible](https://github.com/usbarmory/crucible) (BSD-3-Clause,
 Copyright (c) The crucible authors) and from the meta-toradex-security fuse

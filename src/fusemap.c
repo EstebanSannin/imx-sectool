@@ -58,7 +58,7 @@ const char *field_meaning(const struct fuse_field *f, uint32_t v, char *buf,
 		       v == 1 ? "Secure JTAG" :
 		       v == 3 ? "No debug" :
 				"reserved";
-	if (!strcmp(f->name, "SEC_CONFIG[1]"))
+	if (!strcmp(f->name, secure_boot_field()))
 		return v ? "closed" : "open";
 	if (!strcmp(f->name, "TEMP_GRADE"))
 		return temp[v & 3];
@@ -68,6 +68,8 @@ const char *field_meaning(const struct fuse_field *f, uint32_t v, char *buf,
 			snprintf(buf, n, "%u MHz", speed_8mm[v & 7]);
 		else if (!strcmp(soc->soc_id, "i.MX7D"))
 			snprintf(buf, n, "%u MHz", speed_7d[v & 3]);
+		else if (!strcmp(soc->soc_id, "i.MX6DL"))
+			snprintf(buf, n, "%u MHz", v & 2 ? 996 : 792);
 		else
 			snprintf(buf, n, "%u MHz", 2300 - (v & 0xf) * 100);
 		return buf;
@@ -104,11 +106,14 @@ int mac_read(int index, uint8_t mac[6])
 {
 	uint32_t w0, w1, w2;
 
-	if (fuse_word(soc->mac_bank, 0, &w0) ||
-	    fuse_word(soc->mac_bank, 1, &w1) ||
-	    fuse_word(soc->mac_bank, 2, &w2))
+	if (index < 0 || (unsigned int)index >= soc->mac_count)
+		return -1;
+	if (fuse_word(soc->mac_bank, soc->mac_word, &w0) ||
+	    fuse_word(soc->mac_bank, soc->mac_word + 1, &w1))
 		return -1;
 	if (index == 1) {
+		if (fuse_word(soc->mac_bank, soc->mac_word + 2, &w2))
+			return -1;
 		mac[0] = w2 >> 24;
 		mac[1] = w2 >> 16;
 		mac[2] = w2 >> 8;
@@ -179,6 +184,11 @@ static int show_mac(int index)
 	uint8_t m[6];
 	int empty;
 
+	if ((unsigned int)index >= soc->mac_count) {
+		fprintf(stderr, "error: MAC%d is not available on %s\n",
+			index, soc->name);
+		return EX_UNAVAIL;
+	}
 	if (mac_read(index, m)) {
 		fprintf(stderr, "error: MAC fuses unreadable\n");
 		return EX_UNAVAIL;
@@ -190,7 +200,7 @@ static int show_mac(int index)
 		       empty ? "false" : "true");
 	else
 		printf("MAC%d (bank %u words %s): %02x:%02x:%02x:%02x:%02x:%02x%s\n",
-		       index, soc->mac_bank, index ? "1-2" : "0-1", m[0], m[1],
+		       index, soc->mac_bank, index ? "1-2" : soc->mac_word == 2 ? "2-3" : "0-1", m[0], m[1],
 		       m[2], m[3], m[4], m[5],
 		       empty ? "  (not programmed)" : "");
 	return EX_OK;

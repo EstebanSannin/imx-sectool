@@ -179,7 +179,9 @@ static int read_events(struct hab_event *ev, int max, const char **why)
 	def_len = rec_len(area);
 	if (area[0] != HAB_TAG_EVT_DEF || (ver & HAB_MAJ_MASK) != HAB_MAJ_VER ||
 	    def_len < 4 || def_len >= size) {
-		*why = "no HAB EVT_DEF record at the expected address";
+		*why = !strcmp(soc->soc_id, "i.MX6DL") ?
+		       "no HAB EVT_DEF record; Linux may have overwritten the OCRAM store" :
+		       "no HAB EVT_DEF record at the expected address";
 		return -1;
 	}
 

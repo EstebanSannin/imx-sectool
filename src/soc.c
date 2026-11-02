@@ -125,6 +125,9 @@ static const struct soc_desc imx8mp = {
 	.hab_persist_size = 0x400,
 	.hab_evt_align = 8,
 	.src_base = 0x30390000,
+	.src_sbmr1 = 0x58,
+	.src_sbmr2 = 0x70,
+	.src_srsr = 0x5c,
 	.snvs_base = 0x30370000,
 	/* power-cycle, reboot, sysrq reboot and panic restart all leave
 	 * SRSR = 0x1 by the time Linux runs (docs/phase0-imx8mp.md)
@@ -135,6 +138,7 @@ static const struct soc_desc imx8mp = {
 	.regs = imx8mp_regs,
 	.n_regs = ARRAY_SIZE(imx8mp_regs),
 	.mac_bank = 9,
+	.mac_count = 2,
 	.srk_bank = 6,
 	.srk_words = 8,
 	.srk_lock = "CST_SRK_LOCK",
@@ -233,12 +237,16 @@ static const struct soc_desc imx8mm = {
 	.sec_word = 3,
 	.sec_mask = 0x02000000,
 	.src_base = 0x30390000,
+	.src_sbmr1 = 0x58,
+	.src_sbmr2 = 0x70,
+	.src_srsr = 0x5c,
 	.snvs_base = 0x30370000,
 	.fields = imx8mm_fields,
 	.n_fields = ARRAY_SIZE(imx8mm_fields),
 	.regs = imx8mm_regs,
 	.n_regs = ARRAY_SIZE(imx8mm_regs),
 	.mac_bank = 9,
+	.mac_count = 2,
 	.srk_bank = 6,
 	.srk_words = 8,
 	.srk_lock = "SRK_LOCK",
@@ -357,6 +365,9 @@ static const struct soc_desc imx7d = {
 	.hab_persist_size = 0xb80,
 	.hab_evt_align = 4,
 	.src_base = 0x30390000,
+	.src_sbmr1 = 0x58,
+	.src_sbmr2 = 0x70,
+	.src_srsr = 0x5c,
 	.snvs_base = 0x30370000,
 	.srsr_reliable = 0, /* U-Boot clears SRSR after reading it */
 	.fields = imx7d_fields,
@@ -364,7 +375,137 @@ static const struct soc_desc imx7d = {
 	.regs = imx7d_regs,
 	.n_regs = ARRAY_SIZE(imx7d_regs),
 	.mac_bank = 9,
+	.mac_count = 2,
 	.srk_bank = 6,
+	.srk_words = 8,
+	.srk_lock = "SRK_LOCK",
+	.secure_jtag = 1,
+};
+
+/* ---- i.MX6DualLite -------------------------------------------------------- */
+
+/* Fields from usbarmory/crucible IMX6DL (BSD-3-Clause, crucible authors).
+ * Speed grade: U-Boot mx6/soc.c. SRK revocation: NXP AN4581, appendix B.
+ */
+static const struct fuse_field imx6dl_fields[] = {
+	{ "TESTER_LOCK", 0, 0, 0, 2 },
+	{ "BOOT_CFG_LOCK", 0, 0, 2, 2 },
+	{ "MEM_TRIM_LOCK", 0, 0, 4, 2 },
+	{ "SJC_RESP_LOCK", 0, 0, 6, 1 },
+	{ "MAC_ADDR_LOCK", 0, 0, 8, 2 },
+	{ "GP1_LOCK", 0, 0, 10, 2 },
+	{ "GP2_LOCK", 0, 0, 12, 2 },
+	{ "SRK_LOCK", 0, 0, 14, 1 },
+	{ "ANALOG_LOCK", 0, 0, 18, 2 },
+	{ "MISC_CONF_LOCK", 0, 0, 22, 1 },
+	{ "SI_REV", 0, 3, 16, 4 },
+	{ "NUM_CORES", 0, 3, 20, 2 },
+	{ "BOOT_CFG1", 0, 5, 0, 8 },
+	{ "BOOT_CFG2", 0, 5, 8, 8 },
+	{ "BOOT_CFG3", 0, 5, 16, 8 },
+	{ "BOOT_CFG4", 0, 5, 24, 8 },
+	{ "SEC_CONFIG", 0, 6, 1, 1 },
+	{ "DIR_BT_DIS", 0, 6, 3, 1 },
+	{ "BT_FUSE_SEL", 0, 6, 4, 1 },
+	{ "SJC_DISABLE", 0, 6, 20, 1 },
+	{ "WDOG_ENABLE", 0, 6, 21, 1 },
+	{ "JTAG_SMODE", 0, 6, 22, 2 },
+	{ "KTE", 0, 6, 26, 1 },
+	{ "JTAG_HEO", 0, 6, 27, 1 },
+	{ "TZASC_ENABLE", 0, 6, 28, 1 },
+	{ "SDMMC_HYS_EN", 0, 6, 29, 1 },
+	{ "EMMC_RESET_EN", 0, 6, 30, 1 },
+	{ "NAND_READ_CMD_CODE1", 0, 7, 0, 8 },
+	{ "NAND_READ_CMD_CODE2", 0, 7, 8, 8 },
+	{ "BT_LPB_POLARITY", 0, 7, 20, 1 },
+	{ "LPB_BOOT", 0, 7, 21, 2 },
+	{ "MMC_DLL_DLY", 0, 7, 24, 7 },
+	{ "TEMP_GRADE", 1, 0, 6, 2 },
+	{ "USB_VID", 1, 7, 0, 16 },
+	{ "USB_PID", 1, 7, 16, 16 },
+	{ "GP1", 4, 6, 0, 32 },
+	{ "GP2", 4, 7, 0, 32 },
+	{ "PAD_SETTINGS", 5, 5, 0, 6 },
+	{ "FIELD_RETURN", 5, 6, 0, 1 },
+	{ "SPEED_GRADING", 0, 4, 16, 2 },
+	{ "SRK_REVOKE", 5, 7, 0, 3 },
+};
+
+static const struct fuse_reg imx6dl_regs[] = {
+	{ "OCOTP_LOCK", 0, 0 },
+	{ "OCOTP_CFG0", 0, 1 },
+	{ "OCOTP_CFG1", 0, 2 },
+	{ "OCOTP_CFG2", 0, 3 },
+	{ "OCOTP_CFG3", 0, 4 },
+	{ "OCOTP_CFG4", 0, 5 },
+	{ "OCOTP_CFG5", 0, 6 },
+	{ "OCOTP_CFG6", 0, 7 },
+	{ "OCOTP_MEM0", 1, 0 },
+	{ "OCOTP_MEM1", 1, 1 },
+	{ "OCOTP_MEM2", 1, 2 },
+	{ "OCOTP_MEM3", 1, 3 },
+	{ "OCOTP_MEM4", 1, 4 },
+	{ "OCOTP_ANA0", 1, 5 },
+	{ "OCOTP_ANA1", 1, 6 },
+	{ "OCOTP_ANA2", 1, 7 },
+	{ "OCOTP_SRK0", 3, 0 },
+	{ "OCOTP_SRK1", 3, 1 },
+	{ "OCOTP_SRK2", 3, 2 },
+	{ "OCOTP_SRK3", 3, 3 },
+	{ "OCOTP_SRK4", 3, 4 },
+	{ "OCOTP_SRK5", 3, 5 },
+	{ "OCOTP_SRK6", 3, 6 },
+	{ "OCOTP_SRK7", 3, 7 },
+	{ "OCOTP_SJC_RESP0", 4, 0 },
+	{ "OCOTP_SJC_RESP1", 4, 1 },
+	{ "OCOTP_MAC0", 4, 2 },
+	{ "OCOTP_MAC1", 4, 3 },
+	{ "OCOTP_GP1", 4, 6 },
+	{ "OCOTP_GP2", 4, 7 },
+	{ "OCOTP_MISC_CONF", 5, 5 },
+	{ "OCOTP_FIELD_RETURN", 5, 6 },
+	{ "OCOTP_SRK_REVOKE", 5, 7 },
+};
+
+static const struct mem_region imx6dl_regions[] = {
+	{ "rom-rvt", 0x00000094, 0x48 },
+	{ "ocram-log", 0x00900000, 0x4000 },
+	{ "ocram-hab", 0x00904000, 0xb80 },
+	{ "src", 0x020d8000, 0x48 },
+	{ "snvs-hp", 0x020cc014, 4 },
+};
+
+static const struct soc_desc imx6dl = {
+	.name = "i.MX6DualLite",
+	.soc_id = "i.MX6DL",
+	.banks = 16,
+	.words_per_bank = 8,
+	.nvmem_prefix = "imx-ocotp",
+	.sec_bank = 0,
+	.sec_word = 6,
+	.sec_mask = 2,
+	.regions = imx6dl_regions,
+	.n_regions = ARRAY_SIZE(imx6dl_regions),
+	.rom_log_words = 128,
+	.rom_log_ptr = 0xd8,
+	.rom_log_lo = 0x00900000,
+	.rom_log_hi = 0x00904000,
+	.hab_persist = 0x00904000,
+	.hab_persist_size = 0xb80,
+	.hab_evt_align = 4,
+	.src_base = 0x020d8000,
+	.snvs_base = 0x020cc000,
+	.src_sbmr1 = 0x04,
+	.src_sbmr2 = 0x1c,
+	.src_srsr = 0x08,
+	.fields = imx6dl_fields,
+	.n_fields = ARRAY_SIZE(imx6dl_fields),
+	.regs = imx6dl_regs,
+	.n_regs = ARRAY_SIZE(imx6dl_regs),
+	.mac_bank = 4,
+	.mac_word = 2,
+	.mac_count = 1,
+	.srk_bank = 3,
 	.srk_words = 8,
 	.srk_lock = "SRK_LOCK",
 	.secure_jtag = 1,
@@ -385,7 +526,7 @@ static const struct soc_desc imx8qxp = {
 };
 
 static const struct soc_desc *const socs[] = {
-	&imx8mp, &imx8mm, &imx7d, &imx8qm, &imx8qxp,
+	&imx8mp, &imx8mm, &imx7d, &imx6dl, &imx8qm, &imx8qxp,
 };
 
 const struct soc_desc *soc;
@@ -440,6 +581,11 @@ int fuse_word(unsigned int bank, unsigned int word, uint32_t *val)
 	return 0;
 }
 
+const char *secure_boot_field(void)
+{
+	return field_find("SEC_CONFIG") ? "SEC_CONFIG" : "SEC_CONFIG[1]";
+}
+
 int field_read(const char *name, uint32_t *val)
 {
 	const struct fuse_field *f = field_find(name);
@@ -485,7 +631,7 @@ int soc_detect(const char *force_id)
 		}
 	}
 	fprintf(stderr,
-		"error: SoC '%s' is not supported yet (supported: i.MX8MP, i.MX8MM, i.MX7D, i.MX8QM, i.MX8QXP)\n",
+		"error: SoC '%s' is not supported yet (supported: i.MX6DL, i.MX8MP, i.MX8MM, i.MX7D, i.MX8QM, i.MX8QXP)\n",
 		id);
 	return EX_UNAVAIL;
 }

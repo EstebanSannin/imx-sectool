@@ -16,7 +16,6 @@
 #include "sectool.h"
 
 #define ROM_LOG_MAX_WORDS 128
-#define SRC_SRSR 0x5c
 
 /* ---- ROM log -------------------------------------------------------------- */
 
@@ -51,6 +50,46 @@ static const struct rom_event *rom_event_find(uint8_t id)
 	return NULL;
 }
 
+/* Format 0 parameter counts, also used by U-Boot's i.MX6 ROM log reader. */
+static unsigned int romlog_6dl_params(uint32_t word)
+{
+	switch (word & 0xffffff) {
+	case 0x080000:
+	case 0x090000:
+	case 0x0a0000:
+	case 0x0b0000:
+	case 0x0d0000:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+/* The HAB vector table moved by four bytes in later i.MX6DL ROMs. */
+static int romlog_6dl_pointer(uint32_t *ptr, const char **why)
+{
+	uint32_t rvt[2];
+	uint32_t addr;
+
+	if (mmio_read(0x94, rvt, sizeof(rvt))) {
+		*why = mmio_error();
+		return EX_UNAVAIL;
+	}
+	if (rvt[1] == 0x412c00dd)
+		addr = 0xd8;
+	else if (rvt[0] == 0x402c00dd || rvt[0] == 0x412c00dd)
+		addr = 0xd4;
+	else {
+		*why = "unrecognized i.MX6DL ROM vector table";
+		return EX_UNTRUSTED;
+	}
+	if (mmio_read32(addr, ptr)) {
+		*why = mmio_error();
+		return EX_UNAVAIL;
+	}
+	return EX_OK;
+}
+
 /* Validate the whole buffer before using it as boot evidence. */
 static int read_romlog(uint32_t *ptr, uint32_t *log, int *count,
 		       const char **why)
@@ -59,8 +98,14 @@ static int read_romlog(uint32_t *ptr, uint32_t *log, int *count,
 	unsigned int words = soc->rom_log_words ? soc->rom_log_words :
 			     ROM_LOG_MAX_WORDS;
 	unsigned int i, np;
+	int mx6 = !strcmp(soc->soc_id, "i.MX6DL");
+	int rc;
 
-	if (mmio_read32(soc->rom_log_ptr, ptr)) {
+	if (mx6) {
+		rc = romlog_6dl_pointer(ptr, why);
+		if (rc)
+			return rc;
+	} else if (mmio_read32(soc->rom_log_ptr, ptr)) {
 		*why = mmio_error();
 		return EX_UNAVAIL;
 	}
@@ -73,20 +118,57 @@ static int read_romlog(uint32_t *ptr, uint32_t *log, int *count,
 		*why = mmio_error();
 		return EX_UNAVAIL;
 	}
-	*why = "ROM log is empty or incomplete";
+	*why = mx6 ? "ROM log is empty or invalid; Linux may have reused OCRAM" :
+	       "ROM log is empty or incomplete";
+	if (mx6 && (log[0] & 0xffffff) != 0x010000)
+		return EX_UNTRUSTED;
 	for (i = 0; i < words; i += np + 1) {
 		if (!log[i]) {
 			*count = i;
 			return i ? EX_OK : EX_UNTRUSTED;
 		}
-		if (!(log[i] >> 24))
-			return EX_UNTRUSTED;
-		e = rom_event_find(log[i] >> 24);
-		np = e ? e->nparams : 0;
+		if (mx6) {
+			if ((log[i] & 0xffffff) < 0x010000 ||
+			    (log[i] & 0xffffff) >= 0x0e0000)
+				return EX_UNTRUSTED;
+			np = romlog_6dl_params(log[i]);
+		} else {
+			if (!(log[i] >> 24))
+				return EX_UNTRUSTED;
+			e = rom_event_find(log[i] >> 24);
+			np = e ? e->nparams : 0;
+		}
 		if (np >= words - i)
 			return EX_UNTRUSTED;
 	}
 	return EX_UNTRUSTED;
+}
+
+/* Keep format 0 events raw until their meanings have been verified. */
+static void print_romlog_6dl(uint32_t ptr, const uint32_t *log, int count)
+{
+	int i, np;
+
+	if (opt_json)
+		printf("{\"address\": \"0x%08x\", \"format\": 0, \"events\": [", ptr);
+	else
+		printf("ROM log at 0x%08x (format 0, raw event IDs):\n", ptr);
+	for (i = 0; i < count; i += np + 1) {
+		np = romlog_6dl_params(log[i]);
+		if (opt_json) {
+			printf("%s{\"raw\": \"0x%08x\"", i ? ", " : "", log[i]);
+			if (np)
+				printf(", \"parameter\": \"0x%08x\"", log[i + 1]);
+			putchar('}');
+		} else {
+			printf("  %3d: 0x%08x", i, log[i]);
+			if (np)
+				printf("  parameter=0x%08x", log[i + 1]);
+			putchar('\n');
+		}
+	}
+	if (opt_json)
+		puts("]}");
 }
 
 int cmd_romlog(int argc, char **argv)
@@ -108,6 +190,10 @@ int cmd_romlog(int argc, char **argv)
 		return rc;
 	}
 
+	if (!strcmp(soc->soc_id, "i.MX6DL")) {
+		print_romlog_6dl(ptr, log, count);
+		return EX_OK;
+	}
 	if (opt_json)
 		printf("{\"address\": \"0x%08x\", \"events\": [", ptr);
 	else
@@ -173,39 +259,51 @@ int cmd_romlog(int argc, char **argv)
 /* SRSR bits with U-Boot's names (arch/arm/mach-imx/cpu.c, i.MX8M; the
  * i.MX7 calls 0x10 WDOG1 and 0x100 WDOG4, see srsr_name())
  */
-static const struct {
+struct reset_bit {
 	uint32_t bit;
 	const char *name;
-} srsr_bits[] = {
+};
+
+static const struct reset_bit srsr_bits[] = {
 	{ 0x00001, "POR" },	    { 0x00004, "CSU" },
 	{ 0x00008, "IPP USER" },    { 0x00010, "WDOG" },
 	{ 0x00020, "JTAG HIGH-Z" }, { 0x00040, "JTAG SW" },
 	{ 0x00080, "WDOG3" },	    { 0x00100, "WDOG2" },
 	{ 0x00200, "TEMPSENSE" },
 };
-#define N_SRSR_BITS (ARRAY_SIZE(srsr_bits))
+static const struct reset_bit imx6_srsr_bits[] = {
+	{ 0x00001, "POR" },        { 0x00004, "CSU" },
+	{ 0x00008, "IPP USER" },   { 0x00010, "WDOG" },
+	{ 0x00020, "JTAG HIGH-Z" }, { 0x00040, "JTAG SW" },
+	{ 0x00100, "TEMPSENSE" },  { 0x10000, "WARM BOOT" },
+};
 
-static const char *srsr_name(size_t i)
+static const char *srsr_name(const struct reset_bit *b)
 {
 	if (!strncmp(soc->soc_id, "i.MX7", 5)) {
-		if (srsr_bits[i].bit == 0x10)
+		if (b->bit == 0x10)
 			return "WDOG1";
-		if (srsr_bits[i].bit == 0x100)
+		if (b->bit == 0x100)
 			return "WDOG4";
 	}
-	return srsr_bits[i].name;
+	return b->name;
 }
 
 int cmd_reset_cause(int argc, char **argv)
 {
 	uint32_t srsr, known = 0;
 	int first = 1;
-	size_t i;
+	size_t i, count = ARRAY_SIZE(srsr_bits);
+	const struct reset_bit *bits = srsr_bits;
 
 	(void)argc;
 	(void)argv;
 
-	if (mmio_read32(soc->src_base + SRC_SRSR, &srsr)) {
+	if (!strcmp(soc->soc_id, "i.MX6DL")) {
+		bits = imx6_srsr_bits;
+		count = ARRAY_SIZE(imx6_srsr_bits);
+	}
+	if (mmio_read32(soc->src_base + soc->src_srsr, &srsr)) {
 		fprintf(stderr, "error: reset cause unavailable: %s\n",
 			mmio_error());
 		return EX_UNAVAIL;
@@ -213,10 +311,10 @@ int cmd_reset_cause(int argc, char **argv)
 
 	if (opt_json) {
 		printf("{\"srsr\": \"0x%08x\", \"causes\": [", srsr);
-		for (i = 0; i < N_SRSR_BITS; i++)
-			if (srsr & srsr_bits[i].bit) {
+		for (i = 0; i < count; i++)
+			if (srsr & bits[i].bit) {
 				printf("%s\"%s\"", first ? "" : ", ",
-				       srsr_name(i));
+				       srsr_name(&bits[i]));
 				first = 0;
 			}
 		printf("], \"reliable\": %s}\n",
@@ -231,10 +329,10 @@ int cmd_reset_cause(int argc, char **argv)
 		return EX_UNAVAIL;
 	}
 	printf("Reset cause: ");
-	for (i = 0; i < N_SRSR_BITS; i++) {
-		known |= srsr_bits[i].bit;
-		if (srsr & srsr_bits[i].bit) {
-			printf("%s%s", first ? "" : " + ", srsr_name(i));
+	for (i = 0; i < count; i++) {
+		known |= bits[i].bit;
+		if (srsr & bits[i].bit) {
+			printf("%s%s", first ? "" : " + ", srsr_name(&bits[i]));
 			first = 0;
 		}
 	}
@@ -243,8 +341,10 @@ int cmd_reset_cause(int argc, char **argv)
 		       srsr & ~known);
 	printf("  (SRC_SRSR 0x%08x)\n", srsr);
 	if (!soc->srsr_reliable) {
-		if (!strcmp(soc->soc_id, "i.MX7D")) {
-			puts("note: U-Boot normally clears SRC_SRSR on i.MX7; this value may not describe the boot reset.");
+		if (!strcmp(soc->soc_id, "i.MX7D") ||
+		    !strcmp(soc->soc_id, "i.MX6DL")) {
+			printf("note: U-Boot normally clears SRC_SRSR on %s; this value may not describe the boot reset.\n",
+			       !strcmp(soc->soc_id, "i.MX7D") ? "i.MX7" : "i.MX6");
 			return EX_WARN;
 		}
 		printf("note: on %s, a power-on and a reboot leave the same SRC_SRSR value by the\n"
@@ -269,6 +369,23 @@ int romlog_summary(struct romlog_info *ri, const char **why)
 		return -1;
 
 	ri->addr = ptr;
+	if (!strcmp(soc->soc_id, "i.MX6DL")) {
+		for (i = 0; i < count; i += romlog_6dl_params(log[i]) + 1) {
+			if ((log[i] & 0xffffff) == 0x090000) {
+				ri->have_auth = 1;
+				ri->auth = log[i + 1];
+			}
+			if ((log[i] & 0xffffff) == 0x0b0000) {
+				ri->have_jump = 1;
+				ri->jump = log[i + 1];
+			}
+		}
+		if (!ri->have_jump) {
+			*why = "ROM log has no boot-image jump";
+			return -1;
+		}
+		return 0;
+	}
 	for (i = 0; i < count; i++) {
 		id = log[i] >> 24;
 		e = rom_event_find(id);
@@ -295,9 +412,6 @@ int romlog_summary(struct romlog_info *ri, const char **why)
 }
 
 /* ---- bootinfo ------------------------------------------------------------------- */
-
-#define SRC_SBMR1 0x58
-#define SRC_SBMR2 0x70
 
 /* Follow ROM_SW_INFO_ADDR, as U-Boot get_boot_device() does on i.MX7. */
 static const char *boot_device_7d(unsigned int *instance, const char **why)
@@ -391,6 +505,35 @@ static int bootinfo_7d(void)
 	return have_gpr && device && events >= 0 ? EX_OK : EX_UNAVAIL;
 }
 
+/* U-Boot mx6/soc.c: this describes configuration, not a ROM boot result. */
+static void bootinfo_6dl(uint32_t sbmr1)
+{
+	const char *device = "unknown";
+	unsigned int mode = (sbmr1 >> 4) & 0xf;
+	unsigned int instance = 0;
+
+	if (mode == 0)
+		device = sbmr1 & 8 ? "OneNAND" : "WEIM NOR";
+	else if (mode == 3)
+		device = sbmr1 & 8 ? "I2C" : "SPI NOR";
+	else if (mode >= 4 && mode <= 7) {
+		device = mode < 6 ? "SD" : "MMC";
+		instance = ((sbmr1 >> 11) & 3) + 1;
+	} else if (mode >= 8)
+		device = "NAND";
+
+	if (opt_json) {
+		printf(", \"configured_boot_device\": \"%s\"", device);
+		if (instance)
+			printf(", \"configured_boot_instance\": %u", instance);
+	} else {
+		printf("  Configured boot device: %s", device);
+		if (instance)
+			printf("%u", instance);
+		puts(" (SRC_SBMR1; not a boot result)");
+	}
+}
+
 /*
  * What can be stated about this boot without the ROM API (which only the
  * bootloader can call): SRC boot mode registers raw, boot-config source,
@@ -414,12 +557,12 @@ int cmd_bootinfo(int argc, char **argv)
 	(void)argc;
 	(void)argv;
 
-	have_src = !mmio_read32(soc->src_base + SRC_SBMR1, &sbmr1) &&
-		   !mmio_read32(soc->src_base + SRC_SBMR2, &sbmr2);
+	have_src = !mmio_read32(soc->src_base + soc->src_sbmr1, &sbmr1) &&
+		   !mmio_read32(soc->src_base + soc->src_sbmr2, &sbmr2);
 	src_why = have_src ? NULL : mmio_error();
 	have_log = romlog_summary(&ri, &why) == 0;
 	have_sel = field_read("BT_FUSE_SEL", &sel) == 0;
-	have_sec = field_read("SEC_CONFIG[1]", &sec) == 0;
+	have_sec = field_read(secure_boot_field(), &sec) == 0;
 	/* only i.MX8MN/MP have this fuse */
 	of = field_find("IMG_CNTN_SET1_OFFSET");
 	have_off = !of || field_read(of->name, &off) == 0;
@@ -442,8 +585,9 @@ int cmd_bootinfo(int argc, char **argv)
 			printf(", \"boot_config_source\": \"%s\"",
 			       sel ? "fuses" : "pins");
 		if (have_log) {
-			printf(", \"boot_image\": \"%s\"",
-			       ri.secondary ? "secondary" : "primary");
+			if (ri.have_image)
+				printf(", \"boot_image\": \"%s\"",
+				       ri.secondary ? "secondary" : "primary");
 			if (ri.have_auth)
 				printf(", \"auth_result\": \"0x%08x\"",
 				       ri.auth);
@@ -455,6 +599,8 @@ int cmd_bootinfo(int argc, char **argv)
 		if (have_sec)
 			printf(", \"secure_boot\": \"%s\"",
 			       sec ? "closed" : "open");
+		if (have_src && !strcmp(soc->soc_id, "i.MX6DL"))
+			bootinfo_6dl(sbmr1);
 		if (!strcmp(soc->soc_id, "i.MX7D") && bootinfo_7d())
 			rc = EX_UNAVAIL;
 		printf("}\n");
@@ -474,9 +620,9 @@ int cmd_bootinfo(int argc, char **argv)
 		printf("  Boot config source:     %s (BT_FUSE_SEL=%u)\n",
 		       sel ? "fuses" : "boot pins", sel);
 	if (have_log) {
-		printf("  Boot image:             %s  (ROM log)\n",
-		       ri.secondary ? "SECONDARY" :
-				      "primary");
+		if (ri.have_image)
+			printf("  Boot image:             %s  (ROM log)\n",
+			       ri.secondary ? "SECONDARY" : "primary");
 		if (ri.have_auth) {
 			s = hab_code_name('s', a_sts);
 			r = hab_code_name('r', a_rsn);
@@ -495,8 +641,10 @@ int cmd_bootinfo(int argc, char **argv)
 		printf("  Secondary image:        %s (IMG_CNTN_SET1_OFFSET=%u)\n",
 		       offs, off);
 	if (have_sec)
-		printf("  Secure boot:            %s (SEC_CONFIG[1]=%u)\n",
-		       sec ? "closed" : "open", sec);
+		printf("  Secure boot:            %s (%s=%u)\n",
+		       sec ? "closed" : "open", secure_boot_field(), sec);
+	if (have_src && !strcmp(soc->soc_id, "i.MX6DL"))
+		bootinfo_6dl(sbmr1);
 	if (!strcmp(soc->soc_id, "i.MX7D") && bootinfo_7d())
 		rc = EX_UNAVAIL;
 	return rc;

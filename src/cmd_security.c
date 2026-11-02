@@ -141,6 +141,7 @@ static int need(const char *name, uint32_t *v)
 	if (rc == 0)
 		return 0;
 	add(ST_UNAVAIL, name, name, "%s",
+	    !field_find(name) ? "not defined for this SoC" :
 	    rc == FIELD_LOCKED ? "read-protected" : "cannot read fuses");
 	return -1;
 }
@@ -235,11 +236,13 @@ static const char *smode_name(uint32_t v)
  */
 static int debug_checks(struct debug_policy *p)
 {
+	const struct fuse_reg *key = reg_find("OCOTP_SJC_RESP0");
+
 	if (need("JTAG_SMODE", &p->smode) ||
 	    need("SJC_DISABLE", &p->sjc_disable) || need("KTE", &p->kte) ||
 	    need("JTAG_HEO", &p->heo) || need("BOOT_CFG_LOCK", &p->cfg_lock))
 		return -1;
-	p->key = key_state(8, 0, 2); /* SJC_RESP: bank 8 words 0-1 on i.MX8M */
+	p->key = key ? key_state(key->bank, key->word, 2) : -1;
 
 	if (p->sjc_disable) {
 		p->mode = "jtag-disabled";
@@ -510,6 +513,7 @@ int cmd_debug_status(int argc, char **argv)
 	int have, sec_ok, match, ok, rc, i;
 	uint32_t closed = 0;
 	char smode[32];
+	const struct fuse_field *f;
 
 	if (has_unknown_args(argc, argv, known))
 		return EX_USAGE;
@@ -530,7 +534,7 @@ int cmd_debug_status(int argc, char **argv)
 
 	n_checks = 0;
 	have = debug_checks(&p) == 0;
-	sec_ok = field_read("SEC_CONFIG[1]", &closed) == 0;
+	sec_ok = field_read(secure_boot_field(), &closed) == 0;
 
 	if (have && expect) {
 		match = !strcmp(expect, p.mode);
@@ -573,14 +577,20 @@ int cmd_debug_status(int argc, char **argv)
 		printf("Secure debug:     %-21s %s\n", p.mode, p.layer);
 		snprintf(smode, sizeof(smode), "%u%u (%s)", (p.smode >> 1) & 1,
 			 p.smode & 1, smode_name(p.smode));
-		printf("  JTAG_SMODE:     %-21s bank 1 word 3\n", smode);
-		printf("  SJC_DISABLE:    %-21u bank 1 word 3\n",
-		       p.sjc_disable);
-		printf("  KTE:            %-21s bank 1 word 3\n",
-		       p.kte ? "1 (trace gated)" : "0");
-		if (soc->secure_jtag)
-			printf("  JTAG_HEO:       %-21u bank 1 word 3\n",
-			       p.heo);
+		f = field_find("JTAG_SMODE");
+		printf("  JTAG_SMODE:     %-21s bank %u word %u\n",
+		       smode, f->bank, f->word);
+		f = field_find("SJC_DISABLE");
+		printf("  SJC_DISABLE:    %-21u bank %u word %u\n",
+		       p.sjc_disable, f->bank, f->word);
+		f = field_find("KTE");
+		printf("  KTE:            %-21s bank %u word %u\n",
+		       p.kte ? "1 (trace gated)" : "0", f->bank, f->word);
+		if (soc->secure_jtag) {
+			f = field_find("JTAG_HEO");
+			printf("  JTAG_HEO:       %-21u bank %u word %u\n",
+			       p.heo, f->bank, f->word);
+		}
 		printf("  BOOT_CFG_LOCK:  %-21s bank 0 word 0\n",
 		       cfg_lock_word(p.cfg_lock));
 		if (p.key > 0 || soc->secure_jtag)
@@ -624,13 +634,13 @@ int cmd_audit(int argc, char **argv)
 	n_checks = 0;
 
 	/* 1. secure boot closed */
-	if (need("SEC_CONFIG[1]", &v) == 0) {
+	if (need(secure_boot_field(), &v) == 0) {
 		if (v)
 			add(ST_PASS, "secure-boot", "Secure boot closed",
-			    "SEC_CONFIG[1]=1");
+			    "%s=1", secure_boot_field());
 		else
 			add(ST_FAIL, "secure-boot", "Secure boot closed",
-			    "SEC_CONFIG[1]=0: unsigned images boot");
+			    "%s=0: unsigned images boot", secure_boot_field());
 	}
 
 	/* 2. HAB events */

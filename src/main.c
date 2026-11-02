@@ -43,7 +43,7 @@ static const struct command commands[] = {
 	  "U-Boot 'hab_status': secure boot state and HAB events" },
 	{ "ahab_status", cmd_ahab_status,
 	  "SECO lifecycle and AHAB events [--uio /dev/uioN]" },
-	{ "romlog", cmd_romlog, "decode the i.MX8M Boot ROM event log" },
+	{ "romlog", cmd_romlog, "read the i.MX6/7/8M Boot ROM event log" },
 	{ "reset-cause", cmd_reset_cause,
 	  "reset cause from the System Reset Controller" },
 	{ "debug-status", cmd_debug_status,
