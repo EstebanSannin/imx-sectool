@@ -1,2 +1,2 @@
-Programming bank 4 word 0x00000000 to 0x00000001...
+Programming 1 word in bank 4:
 ERROR

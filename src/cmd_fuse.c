@@ -104,14 +104,37 @@ static int fuse_read(uint32_t bank, uint32_t word, uint32_t *val)
 
 /* ---- programming ---------------------------------------------------------- */
 
-static int confirm_prog(void)
+/* one word of a programming batch */
+struct prog_word {
+	uint32_t word;
+	uint32_t val;
+};
+
+/* Name the region if bank/words[0..n) is this SoC's SRK hash, else NULL. */
+static const char *srk_region(uint32_t bank, const struct prog_word *w,
+			      unsigned int n)
+{
+	unsigned int i;
+
+	if (!soc->srk_words || bank != soc->srk_bank || n != soc->srk_words)
+		return NULL;
+	for (i = 0; i < n; i++)
+		if (w[i].word != i)
+			return NULL;
+	return "SRK_HASH";
+}
+
+/* One warning, naming how many words burn and where. */
+static int confirm_prog(unsigned int nwords, uint32_t bank, const char *region)
 {
 	char line[16];
 
-	puts("Warning: Programming fuses is an irreversible operation!\n"
-	     "         This may brick your system.\n"
-	     "         Use this command only if you are sure of what you are doing!\n"
-	     "\nReally perform this fuse programming? <y/N>");
+	printf("Warning: Programming fuses is an irreversible operation!\n"
+	       "         This may brick your system.\n"
+	       "         Use this command only if you are sure of what you are doing!\n");
+	printf("\nReally program %u fuse word%s in bank %u%s%s%s? <y/N>\n",
+	       nwords, nwords == 1 ? "" : "s", bank, region ? " (" : "",
+	       region ? region : "", region ? ")" : "");
 	fflush(stdout);
 	if (fgets(line, sizeof(line), stdin) &&
 	    (!strcmp(line, "y\n") || !strcmp(line, "Y\n") ||
@@ -122,54 +145,87 @@ static int confirm_prog(void)
 	return 0;
 }
 
-/* One word: show what will actually burn, confirm, write, verify. */
-static int fuse_prog(uint32_t bank, uint32_t word, uint32_t val, int confirmed)
+/*
+ * Program a batch of words in one bank: preview every word, confirm once, then
+ * write and verify each. The whole batch is validated before any fuse is
+ * touched, so a bad or read-locked word aborts before the first write.
+ * Returns EX_OK, 1 if the user aborted, or a negative errno on failure.
+ */
+static int fuse_prog_batch(uint32_t bank, const struct prog_word *w,
+			   unsigned int n, int confirmed)
 {
 	uint32_t cur, now, result, burn;
+	unsigned int i, todo = 0, done = 0;
 
-	if (check_args(bank, word, "fuse_prog"))
-		return -EINVAL;
-	if (nvmem_read(fuse_index(bank, word), &cur))
-		return -EIO;
-	if (cur == OCOTP_READ_LOCKED) {
-		fprintf(stderr,
-			"error: bank %u word %u is read-protected: the result cannot be verified, refusing to program it\n",
-			bank, word);
-		return -EPERM;
-	}
-
-	result = cur | val;
-	burn = val & ~cur;
-	IF_NOT_QUIET(printf(
-		"  current 0x%.8x | requested 0x%.8x -> result 0x%.8x (new bits 0x%.8x)\n",
-		cur, val, result, burn));
-	if (!burn) {
+	/* phase 1: validate and preview, no writes yet */
+	for (i = 0; i < n; i++) {
+		if (check_args(bank, w[i].word, "fuse_prog"))
+			return -EINVAL;
+		if (nvmem_read(fuse_index(bank, w[i].word), &cur))
+			return -EIO;
+		if (cur == OCOTP_READ_LOCKED) {
+			fprintf(stderr,
+				"error: bank %u word %u is read-protected: the result cannot be verified, refusing to program it\n",
+				bank, w[i].word);
+			return -EPERM;
+		}
+		result = cur | w[i].val;
+		burn = w[i].val & ~cur;
+		if (burn)
+			todo++;
 		IF_NOT_QUIET(printf(
-			"  nothing to program: all requested bits are already set\n"));
-		return 0;
+			"  bank %u word %u: 0x%.8x | 0x%.8x -> 0x%.8x (new bits 0x%.8x)%s\n",
+			bank, w[i].word, cur, w[i].val, result, burn,
+			burn ? "" : "  [already set, skipping]"));
 	}
-	if (!confirmed && !confirm_prog())
+
+	if (!todo) {
+		IF_NOT_QUIET(printf(
+			"nothing to program: all requested bits are already set\n"));
+		return EX_OK;
+	}
+
+	if (!confirmed && !confirm_prog(todo, bank, srk_region(bank, w, n)))
 		return 1; /* aborted, not an error */
 
-	syslog(LOG_AUTH | LOG_NOTICE,
-	       "fuse prog bank %u word %u: 0x%08x | 0x%08x -> 0x%08x", bank,
-	       word, cur, val, result);
-	if (nvmem_write(fuse_index(bank, word), val))
-		return -EIO;
+	/* phase 2: write and verify each word that still has bits to burn */
+	for (i = 0; i < n; i++) {
+		if (nvmem_read(fuse_index(bank, w[i].word), &cur))
+			return -EIO;
+		result = cur | w[i].val;
+		if (!(w[i].val & ~cur))
+			continue; /* already set, previewed as skipped */
 
-	/* the driver reloads the shadow registers after a write */
-	if (nvmem_read(fuse_index(bank, word), &now))
-		return -EIO;
-	if (now != result) {
-		fprintf(stderr,
-			"error: verification failed: bank %u word %u reads 0x%08x, expected 0x%08x\n",
-			bank, word, now, result);
-		syslog(LOG_AUTH | LOG_ERR,
-		       "fuse prog bank %u word %u: verify failed, 0x%08x != 0x%08x",
-		       bank, word, now, result);
-		return -EIO;
+		syslog(LOG_AUTH | LOG_NOTICE,
+		       "fuse prog bank %u word %u: 0x%08x | 0x%08x -> 0x%08x",
+		       bank, w[i].word, cur, w[i].val, result);
+		if (nvmem_write(fuse_index(bank, w[i].word), w[i].val))
+			return -EIO;
+
+		/* the driver reloads the shadow registers after a write */
+		if (nvmem_read(fuse_index(bank, w[i].word), &now))
+			return -EIO;
+		if (now != result) {
+			fprintf(stderr,
+				"error: verification failed: bank %u word %u reads 0x%08x, expected 0x%08x\n",
+				bank, w[i].word, now, result);
+			syslog(LOG_AUTH | LOG_ERR,
+			       "fuse prog bank %u word %u: verify failed, 0x%08x != 0x%08x",
+			       bank, w[i].word, now, result);
+			IF_NOT_QUIET(printf(
+				"%u/%u words programmed, bank %u word %u verify failed\n",
+				done, todo, bank, w[i].word));
+			return -EIO;
+		}
+		done++;
+		IF_NOT_QUIET(printf(
+			"  bank %u word %u: burned 0x%.8x, verify OK\n", bank,
+			w[i].word, now));
 	}
-	return 0;
+
+	IF_NOT_QUIET(
+		printf("%u/%u words programmed and verified\n", done, todo));
+	return EX_OK;
 }
 
 /* ---- named fields ---------------------------------------------------------- */
@@ -249,6 +305,8 @@ static int fuse_named(const char *op, int argc, char **argv, int confirmed)
 		}
 		IF_NOT_QUIET(printf("passed\n"));
 	} else {
+		struct prog_word pw = { f->word, req << f->shift };
+
 		IF_NOT_QUIET(printf(
 			"Programming %s (bank %u word %u bits %s) to 0x%x...\n",
 			f->name, f->bank, f->word, b, req));
@@ -259,7 +317,7 @@ static int fuse_named(const char *op, int argc, char **argv, int confirmed)
 				f->name, v, req, v | req, req);
 			return CMD_RET_FAILURE;
 		}
-		ret = fuse_prog(f->bank, f->word, req << f->shift, confirmed);
+		ret = fuse_prog_batch(f->bank, &pw, 1, confirmed);
 		if (ret > 0)
 			return CMD_RET_FAILURE;
 		if (ret)
@@ -405,25 +463,35 @@ int cmd_fuse(int argc, char **argv)
 		}
 		IF_NOT_QUIET(printf("passed\n"));
 	} else if (!strcmp(op, "prog")) {
+		struct prog_word *pw;
+		unsigned int n;
+
 		if (argc < 3) {
 			usage(stderr);
 			return CMD_RET_USAGE;
 		}
 
-		for (i = 2; i < argc; i++, word++) {
-			if (strtou32(argv[i], 16, &val)) {
+		n = argc - 2;
+		pw = calloc(n, sizeof(*pw));
+		if (!pw)
+			goto err;
+		for (i = 0; (unsigned int)i < n; i++) {
+			if (strtou32(argv[i + 2], 16, &val)) {
+				free(pw);
 				usage(stderr);
 				return CMD_RET_USAGE;
 			}
-			IF_NOT_QUIET(printf(
-				"Programming bank %u word 0x%.8x to 0x%.8x...\n",
-				bank, word, val));
-			ret = fuse_prog(bank, word, val, confirmed);
-			if (ret > 0)
-				return CMD_RET_FAILURE; /* aborted by the user */
-			if (ret)
-				goto err;
+			pw[i].word = word + i;
+			pw[i].val = val;
 		}
+		IF_NOT_QUIET(printf("Programming %u word%s in bank %u:\n", n,
+				    n == 1 ? "" : "s", bank));
+		ret = fuse_prog_batch(bank, pw, n, confirmed);
+		free(pw);
+		if (ret > 0)
+			return CMD_RET_FAILURE; /* aborted by the user */
+		if (ret)
+			goto err;
 	} else {
 		usage(stderr);
 		return CMD_RET_USAGE;
