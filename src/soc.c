@@ -27,6 +27,13 @@ static const struct mem_region imx8mp_regions[] = {
 	{ "snvs-hp", 0x30370000, 0x100 },
 };
 
+static const struct mem_region imx8mm_regions[] = {
+	{ "rom-low", 0x00000000, 0x1000 }, /* HAB RVT, ROM API, ROM log ptr */
+	{ "ocram-low", 0x00900000, 0x20000 }, /* below TF-A */
+	{ "src", 0x30390000, 0x100 },
+	{ "snvs-hp", 0x30370000, 0x100 },
+};
+
 /* Positions from the IMX8MP fusemap of usbarmory/crucible (BSD-3-Clause,
  * Copyright (c) The crucible authors), the meta-toradex-security imx8mp
  * templates and U-Boot (TEMP_GRADE: get_cpu_temp_grade(),
@@ -236,11 +243,21 @@ static const struct soc_desc imx8mm = {
 	.sec_bank = 1,
 	.sec_word = 3,
 	.sec_mask = 0x02000000,
+	.regions = imx8mm_regions,
+	.n_regions = ARRAY_SIZE(imx8mm_regions),
+	.rom_log_ptr = 0x9e0,
+	.rom_log_lo = 0x00900000,
+	.rom_log_hi = 0x00b00000,
+	.hab_persist = 0x00908040,
+	.hab_persist_size = 0x400,
+	.hab_evt_align = 8,
 	.src_base = 0x30390000,
 	.src_sbmr1 = 0x58,
 	.src_sbmr2 = 0x70,
 	.src_srsr = 0x5c,
 	.snvs_base = 0x30370000,
+	/* U-Boot clears SRSR before Linux, like the 8MP */
+	.srsr_reliable = 0,
 	.fields = imx8mm_fields,
 	.n_fields = ARRAY_SIZE(imx8mm_fields),
 	.regs = imx8mm_regs,

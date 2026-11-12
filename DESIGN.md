@@ -478,10 +478,19 @@ Differences from the i.MX8M Plus:
 | `TEMP_GRADE` | bank 1 word 0 bits 7:6 | U-Boot `get_cpu_temp_grade()` |
 | `SPEED_GRADING` | bank 1 word 0 bits 10:8: 800, 1200, 1600, 1800, 2000 MHz | U-Boot |
 | TF-A | BL31 at `0x920000` | TF-A `platform_def.h` |
+| HAB event store | OCRAM `0x908040`, events 8-byte aligned | memory dump on hardware |
+| ROM log pointer | `0x9e0` -> `0x90e558` | memory dump on hardware |
 
-The fuse commands were checked on an open Verdin iMX8M Mini. No `/dev/mem`
-region is enabled yet, so `hab_status`, `romlog`, `bootinfo` and two audit
-checks report "unavailable".
+All commands were checked on an open Verdin iMX8M Mini. The HAB event store,
+the ROM log and the SRC/SNVS registers are read the same way as on the 8MP,
+only the OCRAM addresses differ: the store begins with the EVT_DEF record
+(tag 0x0C) at `0x908040`, not at the 8MP's `0x90d040`. On the open board the
+events are the usual `HAB_INV_CSF` plus three `HAB_INV_ASSERTION`, and `romlog`
+decodes the auth result (`0x00cf1133`) that matches the first event. As on the
+8MP, U-Boot clears `SRSR`, so `reset-cause` cannot tell a power-on from a
+reboot. The events should still be compared against U-Boot `hab_status` on the
+same boot, and a closed board tested. See
+[docs/phase0-imx8mm.md](docs/phase0-imx8mm.md) for the addresses and tests.
 
 ### i.MX7Dual
 
@@ -593,11 +602,10 @@ A recipe `imx-sectool_git.bb` could live in the layer.
 
 ## 11. Future work
 
-- i.MX8M Mini: check the Boot ROM regions and the HAB event area on
-  hardware.
 - i.MX8M Nano and Quad, then i.MX9 (ELE), then other i.MX6 variants and i.MX7Solo, then
   SCU fuse support and event access on other SCU parts (i.MX8/8X).
-- i.MX7D: test a closed board.
+- i.MX8M Mini and i.MX7D: compare `hab_status` with U-Boot on the same boot,
+  and test a closed board.
 - Optional kernel helper for the TF-A HAB call on i.MX8M and the SCU
   security calls, proposed upstream as a sysfs interface.
 - U-Boot could copy the HAB events and ROM log into the device tree

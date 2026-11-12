@@ -74,10 +74,59 @@ def nvmem_8mm(auth):
     return words_to_bytes(fuses)
 
 
+# HAB store (0x908040) and ROM log (0x90e558) as read from Linux on an open
+# Verdin iMX8M Mini: EVT_DEF (tag 0x0C) then 1x INV_CSF + 3x INV_ASSERTION,
+# 8-byte aligned. First event is at word 74.
+HAB_STORE_8MM = [
+    0x4320000c, 0x00000033, 0x000000ee, 0x771af5d3, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+    0x43080009, 0x000c6c3f, 0xe1500003, 0x000000ff, 0x00000008, 0x29e16d58, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x43900000, 0x0000001e,
+    0x00000001, 0x49f573ce, 0x00000000, 0x00000000, 0x00000000, 0xf5ac2387, 0x43200000, 0x80af9df3,
+    0x00000000, 0x00000000, 0x00000020, 0x00000000, 0x3cee8900, 0xd07ad511, 0xe2500003, 0x0000001d,
+    0x00000006, 0xb83aff3e, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000002,
+    0x00102000, 0x00000000, 0x430c0005, 0x00000004, 0x00000000, 0x5036f860, 0x040a000a, 0x53b26b26,
+    0xf93500ab, 0xc15bfbb9, 0x430800db, 0x00cf1133, 0x431400db, 0x00a00c33, 0x00000000, 0xc00f7e00,
+    0x20000000, 0x4bdb7ffd, 0x431400db, 0x00a00c33, 0x00000000, 0xe00f7e00, 0x01000000, 0x5eb056e9,
+    0x431400db, 0x00a00c33, 0x00000000, 0x00107e00, 0x04000000,
+]
+HAB_STORE_8MM_FIRST_EVENT = 74
+
+ROM_LOG_8MM = [
+    0xe0000000, 0x10000000, 0x22000000, 0x41000000, 0x50000000, 0x61000000,
+    0x80000000, 0x0000009c, 0x81000000, 0x000003e7, 0x90000000, 0x00000000,
+    0x91000000, 0x000003e7, 0x90000000, 0x00000010, 0x91000000, 0x0000048e,
+    0xa0000000, 0x00cf1133, 0x00000492, 0xc0000000, 0x007e1000, 0x00000540,
+]
+
+
 def scenario_8mm(outdir, name, auth):
     d = os.path.join(outdir, name)
     os.makedirs(d, exist_ok=True)
     open(os.path.join(d, "nvmem.bin"), "wb").write(nvmem_8mm(auth))
+
+    rom = bytearray(0x1000)
+    put(rom, 0x9e0, [0x0090e558])                      # ROM log pointer
+    open(os.path.join(d, "rom-low.bin"), "wb").write(rom)
+
+    ocram = bytearray(0x20000)
+    store = list(HAB_STORE_8MM)
+    if auth:                                           # closed board: no events
+        first = HAB_STORE_8MM_FIRST_EVENT
+        store = store[:first] + [0] * (len(store) - first)
+    put(ocram, 0x8040, store)                          # HAB store at 0x908040
+    put(ocram, 0xe558, ROM_LOG_8MM)                    # ROM log at 0x90e558
+    open(os.path.join(d, "ocram-low.bin"), "wb").write(ocram)
+
+    src = bytearray(0x100)
+    put(src, 0x58, [0x000022d6, 0x00000001])           # SBMR1, SRSR
+    put(src, 0x70, [0x20000019])                       # SBMR2
+    open(os.path.join(d, "src.bin"), "wb").write(src)
+
+    snvs = bytearray(0x100)
+    put(snvs, 0x14, [0x80009d00 if auth else 0x80009b00])
+    open(os.path.join(d, "snvs-hp.bin"), "wb").write(snvs)
 
 
 def nvmem_7d(closed):

@@ -1,0 +1,6 @@
+
+Secure boot enabled
+
+HAB Configuration: 0xcc, HAB State: 0x99
+No HAB Events Found!
+

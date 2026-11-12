@@ -59,7 +59,7 @@ make install PREFIX=/usr INSTALL_ALIASES=1      # also installs 'fuse' and 'hab_
 |---|---|
 | i.MX6DualLite | Fuses, debug checks and boot configuration tested on hardware. On stock Torizon 7.7, Linux overwrites the HAB and ROM logs; U-Boot clears the reset cause. See the [i.MX6DL notes](docs/phase0-imx6dl.md) |
 | i.MX8M Plus | All commands except `ahab_status`, tested on hardware |
-| i.MX8M Mini | Fuse commands, `fusemap`, `debug-status` and `audit`, tested on an open board. `hab_status`, `romlog` and `bootinfo` report "unavailable" until the Boot ROM memory regions are checked on hardware |
+| i.MX8M Mini | All commands, tested on hardware. The HAB event store is in OCRAM at 0x908040 and the ROM log pointer at 0x9e0, like the 8MP; U-Boot clears the reset cause. See the [i.MX8MM notes](docs/phase0-imx8mm.md) |
 | i.MX7Dual | Fuses, HAB events and debug checks tested on an open board. `bootinfo` reads the boot device through the ROM pointer and shows the primary/secondary selection. The ROM log reports the image selection, authentication result and entry address, but not the eMMC boot partition; U-Boot usually clears the reset cause |
 | i.MX8QM | `ahab_status`: lifecycle and firmware version; events through optional UIO setup, tested on hardware |
 | i.MX8QXP | `ahab_status`: lifecycle and firmware version; events through optional UIO setup, tested on hardware |

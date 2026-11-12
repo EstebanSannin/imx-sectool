@@ -137,9 +137,12 @@ case_ mm-fusemap-all         mm-open   0 "$BIN" fusemap
 case_ mm-fusemap-srk         mm-auth   0 "$BIN" fusemap SRK_HASH
 case_ mm-debug-open          mm-open   1 "$BIN" debug-status
 case_ mm-debug-auth          mm-auth   0 "$BIN" debug-status --expect authenticated
-case_ mm-hab-status          mm-auth   3 hab_status
-case_ mm-bootinfo            mm-open   3 "$BIN" bootinfo
-case_ mm-audit               mm-auth   3 "$BIN" audit
+case_ mm-hab-open            mm-open   1 hab_status
+case_ mm-hab-closed          mm-auth   0 hab_status
+case_ mm-romlog              mm-open   0 "$BIN" romlog
+case_ mm-bootinfo            mm-open   0 "$BIN" bootinfo
+case_ mm-reset-cause         mm-open   5 "$BIN" reset-cause
+case_ mm-audit               mm-auth   5 "$BIN" audit
 
 # i.MX7D: HAB store at 0x9049c0, no ROM log
 SOC=i.MX7D
